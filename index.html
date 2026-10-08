@@ -107,6 +107,9 @@ td:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:7
 .species .grp{margin:8px 0 6px}
 .wrow{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .wrow select{flex:1;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:42px}
+.mwater{margin-top:10px}.mwater label{font-size:.88rem;color:var(--muted)}
+.mwrow{display:flex;gap:8px;margin-top:4px}.mwrow input{width:90px;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:42px}
+.mwrow .btn{min-height:42px;padding:8px 12px}
 .datebox{display:flex;gap:8px;align-items:center}
 .datebox .btn{min-height:42px;padding:8px 12px}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -170,7 +173,7 @@ td:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:7
       </div>
     </div>
     <div class="chart-wrap">
-      <svg class="chart" id="chart" viewBox="0 0 600 230" role="img" aria-label="Verlauf des Beißindex über den Tag"></svg>
+      <svg class="chart" id="chart" viewBox="0 0 600 244" role="img" aria-label="Verlauf des Beißindex über den Tag"></svg>
       <div class="readout" id="readout">Tippe in die Kurve für einen Zeitpunkt.</div>
       <div class="legend">
         <span class="lg-major">Mond Zenit/Nadir</span>
@@ -223,6 +226,7 @@ td:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:7
   <section class="block">
     <div class="wxhead"><h2 id="wxTitle">Wetter</h2><button class="btn ghost" id="refresh">Aktualisieren</button></div>
     <table id="wx"></table>
+    <div class="mwater"><label for="mwIn">Wassertemperatur selbst gemessen</label><div class="mwrow"><input type="text" inputmode="decimal" id="mwIn" placeholder="°C"><button type="button" class="btn ghost" id="mwSave">Übernehmen</button><button type="button" class="btn ghost" id="mwDel" hidden>Löschen</button></div><div class="sub" id="mwInfo"></div></div>
     <div class="status" id="wxStatus">Wetterdaten werden geladen …</div>
   </section>
 
@@ -358,6 +362,9 @@ const WTYPE=()=>WATERS[state.waterMode==='auto'?state.waterAuto:state.waterMode]
 const isSea=()=>['ostsee','nordsee'].includes(WTYPE());
 const SP=()=>SPECIES[state.species]||SPECIES.zander;
 
+/* ---------- Gemessene Wassertemperatur ---------- */
+function manualWater(){let m=null;try{m=JSON.parse(localStorage.getItem('beissindex:water')||'null');}catch(_){}
+  return m&&m.key===wxKey()&&isFinite(m.v)?m:null;}
 /* ---------- Wetter (Open-Meteo) ---------- */
 const wxKey=()=>state.lat.toFixed(3)+','+state.lng.toFixed(3);
 async function fetchWx(lat,lng,past,fwd,sea){
@@ -381,7 +388,7 @@ async function loadWeather(force){
   if(!force&&wx&&wx.key===wxKey()&&Date.now()-wx.fetched<30*60e3)return;
   $('wxStatus').textContent='Wetterdaten werden geladen …';
   try{
-    wx=await fetchWx(state.lat,state.lng,3,10,isSea());
+    wx=await fetchWx(state.lat,state.lng,30,10,isSea());
     if(wx.sst==null&&isSea())wx.seaTried=true;
     persist();
   }catch(e){
@@ -396,9 +403,21 @@ function wxAt(t){
   const i=Math.round((t-wx.t[0])/36e5);
   if(i<3||i>=wx.t.length||wx.p[i]==null||wx.p[i-3]==null)return null;
   const dt=(i>=24&&wx.tmp[i-24]!=null)?wx.tmp[i]-wx.tmp[i-24]:null;
-  const win=wx.tmp.slice(Math.max(0,i-71),i+1).filter(v=>v!=null),t72=win.length>=24?win.reduce((a,b)=>a+b,0)/win.length:wx.tmp[i];
+  if(!wx._wt||wx._wt.length!==wx.tmp.length){
+    // Wasser reagiert träge: exponentiell gewichteter Mittelwert der Lufttemperatur, Zeitkonstante 10 Tage
+    const tau=240,arr=new Array(wx.tmp.length);let est=null,n0=0,s0=0;
+    for(let k=0;k<wx.tmp.length;k++){const v=wx.tmp[k];if(v==null){arr[k]=est;continue;}
+      if(est==null){s0+=v;n0++;if(n0>=24){est=s0/n0;}arr[k]=n0>=24?est:null;continue;}
+      est+=(v-est)/tau;arr[k]=est;}
+    wx._wt=arr;
+  }
+  const histH=i; // Stunden Vorlauf vor dem Zeitpunkt
+  let t72=wx._wt[i]!=null?Math.max(0,wx._wt[i]):wx.tmp[i];
+  let wsrc=histH>=24*14?'est':'short';
+  const mw=manualWater();
+  if(mw&&Math.abs(t-mw.t)<=3*dayMs){t72=mw.v;wsrc='manual';}
   const sstv=wx.sst&&wx.sst[i]!=null?wx.sst[i]:null;
-  return {dt:sstv!=null?null:dt,t72:sstv!=null?sstv:t72,sst:sstv,p:wx.p[i],dp:wx.p[i]-wx.p[i-3],rh:wx.rh[i],cc:wx.cc[i],ws:wx.ws[i],wg:wx.wg[i],pr:wx.pr[i],tmp:wx.tmp[i]};
+  return {dt:sstv!=null||wsrc==='manual'?null:dt,t72:wsrc==='manual'?t72:(sstv!=null?sstv:t72),sst:wsrc==='manual'?null:sstv,wsrc,p:wx.p[i],dp:wx.p[i]-wx.p[i-3],rh:wx.rh[i],cc:wx.cc[i],ws:wx.ws[i],wg:wx.wg[i],pr:wx.pr[i],tmp:wx.tmp[i]};
 }
 function pressureRate(dp){
   if(dp>=2)return ['stark steigend',-5]; if(dp>=0.7)return ['leicht steigend',0];
@@ -407,16 +426,17 @@ function pressureRate(dp){
 function tempRate(w,sp){
   const v=w.t72,[a,b,c,d]=sp.t;
   const f=v<=a||v>=d?0:v<b?(v-a)/(b-a):v<=c?1:(d-v)/(d-c);
-  let pts=20*f,lab=(w.sst!=null?'Wasser (Meer) ':'Ø 3 Tage ')+r1(v)+' °C, '+(f>=0.95?'optimal':f>0?(v<b?'etwas kühl':'etwas warm'):(v<=a?'zu kalt':'zu warm'));
+  let pts=20*f,lab=(w.wsrc==='manual'?'Wasser gemessen ':w.sst!=null?'Wasser (Meer) ':'Wasser geschätzt ')+r1(v)+' °C, '+(f>=0.95?'optimal':f>0?(v<b?'etwas kühl':'etwas warm'):(v<=a?'zu kalt':'zu warm'));
   if(w.dt!=null){if(w.dt>=2&&v<c){pts+=5;lab+=', wärmer als gestern';}else if(w.dt<=-4){pts-=5;lab+=', Kälteeinbruch';}}
-  return [lab,pts];
+  return [lab,pts,f];
 }
 function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
   h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
   return new Date(y,mo-1,da);}
 function pressureDay(t){
   const d=new Date(t),y=d.getFullYear(),key=(d.getMonth()+1)+'-'+d.getDate();
-  if(['1-1','3-8','5-1','10-3','12-25','12-26'].includes(key))return 'Feiertag';
+  const inBerlin=state.lat>52.33&&state.lat<52.68&&state.lng>13.08&&state.lng<13.77;
+  if(['1-1','5-1','10-3','12-25','12-26'].includes(key)||(inBerlin&&key==='3-8'))return 'Feiertag';
   const e=easter(y).getTime(),diff=Math.round((new Date(y,d.getMonth(),d.getDate()).getTime()-e)/dayMs);
   if([-2,1,39,50].includes(diff))return 'Feiertag';
   if(d.getDay()===0||d.getDay()===6)return 'Wochenende';
@@ -455,15 +475,19 @@ function analyze(){
     const isDay=sunAlt(new Date(t),state.lat,state.lng)>0;
     const timeF=Math.max(dusk*sp.act.dusk,isDay?sp.act.day:sp.act.night);
     const timeLabel=dusk>.5?'Dämmerung':isDay?'Tag':'Nacht';
-    const W=wxAt(t),pr=W?pressureRate(W.dp):['keine Daten',0],sk=W?skyRate(W,sp,isDay):['keine Daten',0],tp=W?tempRate(W,sp):['keine Daten',0];
+    const W=wxAt(t),pr=W?pressureRate(W.dp):['keine Daten',0],sk=W?skyRate(W,sp,isDay):['keine Daten',0],tp=W?tempRate(W,sp):['keine Daten',0,null];
     const busy=pressureDay(t);
     const inSeason=!sp.season||sp.season.includes(new Date(t).getMonth()+1);
     const parts={base:10,dusk:30*timeF,temp:tp[1],phase:phaseBonus,major:8*major,minor:4*minor,pressure:pr[1],sky:sk[1],busy:busy?-10:0,season:inSeason?0:-25};
-    const total=Math.round(Math.max(0,Math.min(100,Object.values(parts).reduce((a,b)=>a+b,0))));
-    return {total,parts,W,prLabel:pr[0],skyLabel:sk[0],tempLabel:tp[0],busy,timeLabel};
+    const raw=Math.max(0,Math.min(100,Object.values(parts).reduce((a,b)=>a+b,0)));
+    const gate=tp[2]==null?1:0.25+0.75*tp[2];
+    const total=Math.round(raw*gate);
+    return {total,raw:Math.round(raw),gate,parts,W,prLabel:pr[0],skyLabel:sk[0],tempLabel:tp[0],busy,timeLabel};
   }
   const series=[];for(let t=ds;t<=de;t+=10*6e4)series.push({t,...score(t)});
-  return {ds,de,ev,il,age,dNew,dFull,score,series,phaseLabel};
+  const win=(list,half)=>list.filter(T=>T>=ds&&T<de).map(T=>[T-half*6e4,T+half*6e4]).sort((x,y)=>x[0]-y[0]);
+  const solunar={major:win(ev.transit.concat(ev.nadir),60),minor:win(ev.mrise.concat(ev.mset),30)};
+  return {ds,de,ev,il,age,dNew,dFull,score,series,phaseLabel,solunar};
 }
 function phaseName(p){
   if(p<.03||p>.97)return 'Neumond';if(p<.22)return 'Zunehmende Sichel';if(p<.28)return 'Erstes Viertel';
@@ -491,12 +515,14 @@ function render(){
   if(cur)segs.push(cur);
   segs.sort((x,y)=>y.peak.total-x.peak.total);
   $('windows').innerHTML=SP().banned?'<li><span class="p">Für diese Art gilt derzeit ein Fangverbot. Keine Zeitfenster.</span></li>':segs.slice(0,4).sort((x,y)=>x.a-y.a).map(s=>`<li><span class="t">${fmt(s.a)} – ${fmt(s.b+10*6e4)}</span><span class="p">bis ${s.peak.total}</span></li>`).join('')
-    ||'<li><span class="p">Kein Fenster über 40. Dämmerung bleibt die beste Wahl.</span></li>';
+    ||(best.gate<0.6?`<li><span class="p">Für ${SP().name} ist das Wasser derzeit ${best.tempLabel.includes('kalt')||best.tempLabel.includes('kühl')?'zu kalt':'zu warm'}. Kaum Aktivität zu erwarten, eine andere Art ist heute die bessere Wahl.</span></li>`:'<li><span class="p">Kein Fenster über 40. Dämmerung bleibt die beste Wahl.</span></li>');
 
   const rows=[],add=(list,label)=>list.filter(t=>t>=ds&&t<de).forEach(t=>rows.push([t,label]));
   add(ev.srise,'Sonnenaufgang');add(ev.sset,'Sonnenuntergang');add(ev.mrise,'Mondaufgang');add(ev.mset,'Monduntergang');
   add(ev.transit,'Mond im Zenit (Major)');add(ev.nadir,'Mond im Nadir (Major)');rows.sort((a,b)=>a[0]-b[0]);
+  const sw=l=>l.length?l.map(([a,b])=>fmt(a)+'–'+fmt(b)).join(', '):'–';
   $('events').innerHTML=`<tr><td>${phaseName(A.il.phase)}, ${Math.round(A.il.fraction*100)} % beleuchtet</td><td>${A.age.toFixed(1)} Tage</td></tr>`+
+    `<tr><td>Solunar-Hauptzeiten <small>(nur Info)</small></td><td>${sw(A.solunar.major)}</td></tr><tr><td>Solunar-Nebenzeiten <small>(nur Info)</small></td><td>${sw(A.solunar.minor)}</td></tr>`+
     rows.map(r=>`<tr><td>${r[1]}</td><td>${fmt(r[0])}</td></tr>`).join('');
 
   renderDetail();
@@ -520,7 +546,7 @@ function renderDetail(){
   $('wx').innerHTML=W?[
     ['Luftdruck',r1(W.p)+' hPa'],['Tendenz (3 Std.)',(W.dp>0?'+':'')+r1(W.dp)+' hPa, '+shown.prLabel],
     ['Luftfeuchtigkeit',Math.round(W.rh)+' %'],['Bewölkung',Math.round(W.cc)+' %'],
-    ['Wind / Böen',Math.round(W.ws)+' / '+Math.round(W.wg)+' km/h'],['Niederschlag',r1(W.pr)+' mm/h'],['Temperatur',r1(W.tmp)+' °C'],[W.sst!=null?'Wassertemperatur (Meer)':'Ø Luft 3 Tage (Näherung Wasser)',r1(W.t72)+' °C']
+    ['Wind / Böen',Math.round(W.ws)+' / '+Math.round(W.wg)+' km/h'],['Niederschlag',r1(W.pr)+' mm/h'],['Temperatur',r1(W.tmp)+' °C'],[W.wsrc==='manual'?'Wassertemperatur (von dir gemessen)':W.sst!=null?'Wassertemperatur (Meer, Modell)':'Wassertemperatur (geschätzt aus Luft)',r1(W.t72)+' °C']
   ].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join(''):'';
   if(wx&&wx.key===wxKey())$('wxStatus').textContent=W?'Open-Meteo, Stand '+new Date(wx.fetched).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' Uhr.':
     'Für dieses Datum gibt es keine Wetterdaten (Vorhersage reicht etwa 10 Tage). Der Wert enthält nur Mond und Sonne.';
@@ -530,19 +556,28 @@ function renderDetail(){
     [`Mondphase: ${A.phaseLabel}`,rr(p.phase)],
     ['Mond im Zenit/Nadir (max. 8)',rr(p.major)],['Mondauf-/untergang (max. 4)',rr(p.minor)],
     [`Luftdruck: ${shown.prLabel} (±5)`,rr(p.pressure)],[`Himmel: ${shown.skyLabel}`,rr(p.sky)],
-    [`Angeldruck: ${shown.busy||'Werktag'}`,rr(p.busy)],...(SP().season?[[`Saison: ${p.season<0?'außerhalb der Hauptsaison':'Hauptsaison'}`,rr(p.season)]]:[])].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('');
+    [`Angeldruck: ${shown.busy||'Werktag oder Feiertag nicht bundesweit'}`,rr(p.busy)],...(SP().season?[[`Saison: ${p.season<0?'außerhalb der Hauptsaison':'Hauptsaison'}`,rr(p.season)]]:[]),
+    ['Zwischensumme',String(shown.raw)],
+    [shown.W?`Temperatur-Faktor (zu kalt/warm senkt den Wert)`:'Temperatur-Faktor (keine Wetterdaten)','× '+shown.gate.toFixed(2).replace('.',',')],
+    ['<b>Beißindex</b>','<b>'+shown.total+'</b>']].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('');
 }
 
 let animated=false,selT=null;
-const W_=600,H_=230,PADL=28,PADR=8,PADT=26,PADB=26;
+const W_=600,H_=244,PADL=28,PADR=8,PADT=40,PADB=26;
 const X=t=>PADL+(t-A.ds)/(A.de-A.ds)*(W_-PADL-PADR),Y=v=>PADT+(1-v/100)*(H_-PADT-PADB);
 function drawChart(nowT){
   const {series,ev,ds,de}=A;let s='';
   [25,50,75].forEach(v=>{s+=`<line x1="${PADL}" x2="${W_-PADR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${PADL-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;});
   for(let h=0;h<=24;h+=3){const t=ds+(de-ds)*h/24;s+=`<text x="${X(t)}" y="${H_-6}" text-anchor="middle" font-size="11" fill="var(--muted)">${String(h%24).padStart(2,'0')}</text>`;}
-  const mark=(list,c,lab)=>list.filter(t=>t>=ds&&t<de).forEach(t=>{s+=`<line x1="${X(t)}" x2="${X(t)}" y1="${PADT-8}" y2="${H_-PADB}" stroke="${c}" stroke-width="1.5" stroke-dasharray="3 4" opacity=".8"/><text x="${X(t)}" y="${PADT-12}" text-anchor="middle" font-size="12" font-weight="700" fill="${c}">${lab}</text>`;});
+  const marks=[];
+  const mark=(list,c,lab)=>list.filter(t=>t>=ds&&t<de).forEach(t=>marks.push({t,c,lab}));
   mark(ev.srise,'var(--sun)','☀↑');mark(ev.sset,'var(--sun)','☀↓');mark(ev.mrise,'var(--reed)','☾↑');mark(ev.mset,'var(--reed)','☾↓');
   mark(ev.transit,'var(--bobber)','Z');mark(ev.nadir,'var(--bobber)','N');
+  marks.sort((a,b)=>a.t-b.t);
+  const lastX=[-99,-99];
+  marks.forEach(m=>{const x=X(m.t);let row=x-lastX[0]>=30?0:(x-lastX[1]>=30?1:0);lastX[row]=x;
+    const y=row===0?PADT-8:PADT-24;
+    s+=`<line x1="${x}" x2="${x}" y1="${y+4}" y2="${H_-PADB}" stroke="${m.c}" stroke-width="1.5" stroke-dasharray="3 4" opacity=".8"/><text x="${x}" y="${y}" text-anchor="middle" font-size="12" font-weight="700" fill="${m.c}">${m.lab}</text>`;});
   const pts=series.map(p=>X(p.t).toFixed(1)+','+Y(p.total).toFixed(1));
   s+=`<path d="M${X(ds)},${Y(0)} L${pts.join(' L')} L${X(de)},${Y(0)} Z" fill="var(--fill)"/><path class="${animated?'':'curve'}" d="M${pts.join(' L')}" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>`;
   if(nowT){const n=A.score(nowT).total;s+=`<line x1="${X(nowT)}" x2="${X(nowT)}" y1="${PADT}" y2="${H_-PADB}" stroke="var(--ink)"/><circle cx="${X(nowT)}" cy="${Y(n)}" r="7" fill="var(--bobber)" stroke="var(--card)" stroke-width="2.5"/>`;}
@@ -624,8 +659,9 @@ async function detectWater(lat,lng){
 async function setPlace(name,lat,lng){
   if(map)map._userMoved=false;
   state.place=name;state.lat=+(+lat).toFixed(4);state.lng=+(+lng).toFixed(4);persist();
-  hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();render();
+  hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();showManual();render();
   const wt=await detectWater(state.lat,state.lng);
+  if(wt){try{localStorage.setItem('beissindex:waterKey',wxKey());}catch(_){}}
   if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
     if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;}
   await loadWeather(true);render();
@@ -654,6 +690,14 @@ $('geo').onclick=()=>{
     err=>{msg.textContent=geoError(err);},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 };
 $('refresh').onclick=async()=>{await loadWeather(true);render();};
+function showManual(){const m=manualWater();$('mwDel').hidden=!m;
+  $('mwInfo').textContent=m?`Gemessen: ${r1(m.v)} °C am ${new Date(m.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}. Gilt 3 Tage für diesen Standort und ersetzt die Schätzung.`:'Ohne Messung schätzt die App die Wassertemperatur aus der Luft der letzten 30 Tage. Eine eigene Messung ist genauer.';}
+$('mwSave').onclick=()=>{const v=parseFloat(String($('mwIn').value).replace(',','.'));
+  if(!isFinite(v)||v<-1||v>35){$('mwInfo').textContent='Bitte einen Wert zwischen 0 und 35 °C eingeben.';return;}
+  try{localStorage.setItem('beissindex:water',JSON.stringify({v,t:Date.now(),key:wxKey()}));}catch(_){}
+  $('mwIn').value='';showManual();render();};
+$('mwDel').onclick=()=>{try{localStorage.removeItem('beissindex:water');}catch(_){}showManual();render();};
+showManual();
 function speciesChips(){
   const el=$('species'),W=WATERS[WTYPE()];
   const all=[...W.big,...W.bait,...(W.banned||[])];
@@ -787,7 +831,7 @@ fEl('fSave').onclick=async()=>{
   fEl('fSave').disabled=true;m.textContent='Wetter und Mond werden ergänzt …';
   let data=null;const key=fPos.lat.toFixed(3)+','+fPos.lng.toFixed(3);
   if(wx&&wx.key===key&&t>=wx.t[3]&&t<=wx.t[wx.t.length-1])data=wx;
-  else if(t>=Date.now()-91*dayMs){try{data=await fetchWx(fPos.lat,fPos.lng,92,1,isSea());}catch(_){data=null;}}
+  else if(t>=Date.now()-91*dayMs){try{data=await fetchWx(fPos.lat,fPos.lng,pastDaysFor(t),1,isSea());}catch(_){data=null;}}
   const snap=withContext({state:{lat:fPos.lat,lng:fPos.lng,species:SPECIES[spKey]?spKey:state.species,date:dstr(t)},wx:data},()=>{
     const a=analyze(),s=a.score(t);
     return {index:SPECIES[spKey]?s.total:null,time:s.timeLabel,moon:phaseName(a.il.phase),illum:Math.round(a.il.fraction*100),W:s.W,prLabel:s.prLabel};
@@ -810,6 +854,7 @@ fEl('fSave').onclick=async()=>{
   else m.textContent=(wasEdit?'Änderung gespeichert':'Gespeichert')+(e.wx?', inklusive Wetter.':(navigator.onLine?'. Wetterdaten waren nicht verfügbar.':'. Kein Netz: Das Wetter wird automatisch nachgeladen, sobald wieder Empfang da ist.'));
   renderCatches();
 };
+const pastDaysFor=t=>Math.min(92,Math.max(30,Math.ceil((Date.now()-t)/dayMs)+30));
 function wxRecord(W,trend){return {p:+W.p.toFixed(1),dp:+W.dp.toFixed(1),trend,tmp:+W.tmp.toFixed(1),t72:+W.t72.toFixed(1),rh:Math.round(W.rh),cc:Math.round(W.cc),ws:Math.round(W.ws),wg:Math.round(W.wg),pr:+W.pr.toFixed(1)};}
 let backfilling=false;
 async function backfillWeather(){
@@ -819,7 +864,7 @@ async function backfillWeather(){
   backfilling=true;let n=0;
   try{
     for(const c of todo){
-      let data;try{data=await fetchWx(c.lat,c.lng,92,1,c.water?['ostsee','nordsee'].includes(c.water):isSea());}catch(_){break;}
+      let data;try{data=await fetchWx(c.lat,c.lng,pastDaysFor(c.t),1,c.water?['ostsee','nordsee'].includes(c.water):isSea());}catch(_){break;}
       const snap=withContext({state:{lat:c.lat,lng:c.lng,species:SPECIES[c.speciesKey]?c.speciesKey:state.species,date:dstr(c.t)},wx:data},()=>{
         const a=analyze(),s=a.score(c.t);return {index:SPECIES[c.speciesKey]?s.total:null,W:s.W,prLabel:s.prLabel,time:s.timeLabel};});
       if(snap.W){c.wx=wxRecord(snap.W,snap.prLabel);c.index=snap.index;c.daytime=snap.time;n++;}
@@ -902,8 +947,14 @@ fEl('fCsv').onclick=()=>{
 fEl('fBackup').onclick=()=>{try{localStorage.setItem('beissindex:lastBackup',String(catches.length));}catch(_){}renderCatches();download('fangbuch-sicherung-'+dstr(Date.now())+'.json',JSON.stringify({version:1,catches},null,1),'application/json');};
 fEl('fImport').onchange=async e=>{
   const file=e.target.files[0];if(!file)return;
-  try{const d=JSON.parse(await file.text()),list=Array.isArray(d)?d:d.catches;if(!Array.isArray(list))throw 0;
-    const ids=new Set(catches.map(c=>c.id));let n=0;list.forEach(c=>{if(c&&c.id&&isFinite(c.t)&&!ids.has(c.id)){catches.push(c);n++;}});
+  const readText=f=>f.text?f.text():new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsText(f);});
+  try{const d=JSON.parse(await readText(file)),list=Array.isArray(d)?d:d.catches;if(!Array.isArray(list))throw 0;
+    const ids=new Set(catches.map(c=>c.id));let n=0;const N=v=>v==null||v===''||!isFinite(+v)?null:+v,S=v=>v==null?'':String(v).slice(0,500);
+    list.forEach(c=>{const cid=c&&c.id!=null?String(c.id).replace(/[^a-z0-9]/gi,''):'';if(cid&&isFinite(c.t)&&!ids.has(cid)){ids.add(cid);
+      const w=c.wx&&typeof c.wx==='object'?{p:N(c.wx.p),dp:N(c.wx.dp),trend:S(c.wx.trend),tmp:N(c.wx.tmp),t72:N(c.wx.t72),rh:N(c.wx.rh),cc:N(c.wx.cc),ws:N(c.wx.ws),wg:N(c.wx.wg),pr:N(c.wx.pr)}:null;
+      catches.push({id:cid,t:+c.t,result:['fang','biss','null'].includes(c.result)?c.result:'fang',species:S(c.species),speciesKey:S(c.speciesKey),water:S(c.water),
+        weight:N(c.weight),length:N(c.length),place:S(c.place),lat:N(c.lat),lng:N(c.lng),bait:S(c.bait),depth:N(c.depth),note:S(c.note),index:N(c.index),
+        daytime:S(c.daytime),moon:S(c.moon),illum:N(c.illum),wx:w});n++;}});
     catches.sort((a,b)=>b.t-a.t);saveCatches();renderCatches();fEl('fMsg').textContent=n+' Einträge geladen.';}
   catch(_){fEl('fMsg').textContent='Datei konnte nicht gelesen werden.';}
   e.target.value='';
@@ -928,6 +979,10 @@ initForm();renderCatches();
 render();
 loadWeather(false).then(render);
 backfillWeather();
+(async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
+  if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
+  try{localStorage.setItem('beissindex:waterKey',k);}catch(_){}
+  if(wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();fillSpeciesSelect();render();if(isSea())loadWeather(true).then(render);}})();
 setInterval(async()=>{if(!datePicked&&state.date!==todayStr()){goNow();return;}if(state.date===todayStr()){await loadWeather(false);render();}},5*60*1000);
 </script>
 </body>
