@@ -101,6 +101,12 @@ td:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:7
 .leaflet-popup-content .pbtn.alt{background:#dde7e5;color:#12343b}
 .install{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--bobber);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:.92rem}
 .install button{display:inline-block;margin-right:8px;margin-top:8px;font:inherit;font-weight:700;border:0;border-radius:8px;padding:6px 12px;background:var(--chip);color:var(--ink);cursor:pointer}
+.species .chiprow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.species .chiprow button{font:inherit;font-size:.95rem;color:var(--ink);background:var(--chip);border:1px solid transparent;border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer}
+.species .chiprow button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.species .grp{margin:8px 0 6px}
+.wrow{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.wrow select{flex:1;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:42px}
 .datebox{display:flex;gap:8px;align-items:center}
 .datebox .btn{min-height:42px;padding:8px 12px}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -152,7 +158,7 @@ td:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:7
     <ul class="hits" id="hits"></ul>
     <div class="msg" id="locMsg"></div>
   </div>
-  <div class="chips" id="species" role="group" aria-label="Fischart"></div>
+  <div class="species" id="species" role="group" aria-label="Fischart"></div>
   <p class="sub" id="speciesInfo" style="margin:-6px 0 14px"></p>
 
   <div class="hero">
@@ -266,10 +272,10 @@ function moonIllum(t){
 
 /* ---------- Zustand ---------- */
 const KEY='beissindex:live:v1';
-const state={lat:52.5357,lng:13.1997,place:'Berlin Spandau',species:'zander',date:todayStr()};
+const state={lat:52.5357,lng:13.1997,place:'Berlin Spandau',species:'zander',waterMode:'auto',waterAuto:'binnen',date:todayStr()};
 let wx=null;
-try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,wx}));}catch(_){}}
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species','waterMode','waterAuto'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,wx}));}catch(_){}}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dayBounds(str){const [y,m,d]=str.split('-').map(Number);return [new Date(y,m-1,d).getTime(),new Date(y,m-1,d+1).getTime()];}
 const fmt=t=>new Date(t).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
@@ -302,24 +308,81 @@ const SPECIES={
   forelle:{name:'Forelle',t:[4,8,16,20],act:{dusk:1,day:.6,night:.1},sky:{over:5,sun:-3},moon:5,
     info:'Kaltwasserfisch. Über etwa 18 °C kaum noch beißfreudig.'}
 };
+Object.assign(SPECIES,{
+  rapfen:{name:'Rapfen',t:[8,14,24,28],act:{dusk:1,day:.8,night:.1},sky:{over:3,sun:0},moon:5,
+    info:'Oberflächenräuber in Flüssen und strömenden Seeabschnitten, jagt tagsüber oft sichtbar.'},
+  gruendling:{name:'Gründling',t:[6,12,22,26],act:{dusk:.8,day:.9,night:.1},sky:{over:0,sun:0},moon:0,
+    info:'Bodenfisch über Sand und Kies, tagaktiv. Klassischer Köderfisch.'},
+  ukelei:{name:'Ukelei',t:[8,14,24,28],act:{dusk:.9,day:1,night:0},sky:{over:0,sun:0},moon:0,
+    info:'Oberflächen-Schwarmfisch, im Sommer leicht zu fangen.'},
+  rotfeder:{name:'Rotfeder',t:[10,16,25,28],act:{dusk:1,day:.8,night:.1},sky:{over:0,sun:0},moon:0,
+    info:'Wärmeliebend, oberflächennah an Krautkanten.'},
+  meerforelle:{name:'Meerforelle',t:[3,6,12,16],act:{dusk:1,day:.6,night:.4},sky:{over:5,sun:-3},moon:3,season:[10,11,12,1,2,3,4,5],water:true,
+    info:'Küstenfisch der kalten Jahreszeit, beste Zeit etwa Oktober bis Mai. Dämmerung und trübes Wetter helfen.'},
+  hornhecht:{name:'Hornhecht',t:[9,12,18,21],act:{dusk:.7,day:1,night:0},sky:{over:0,sun:3},moon:0,season:[4,5,6],water:true,
+    info:'Kommt etwa April bis Juni zum Laichen an die Küste, beißt tagsüber nahe der Oberfläche.'},
+  plattfisch:{name:'Plattfisch',t:[2,6,16,20],act:{dusk:1,day:.6,night:.8},sky:{over:0,sun:0},moon:3,water:true,
+    info:'Flunder, Scholle und Kliesche. Grundangeln vom Strand oder Boot, abends und nachts oft besser.'},
+  makrele:{name:'Makrele',t:[11,14,20,23],act:{dusk:.9,day:1,night:.1},sky:{over:0,sun:0},moon:0,season:[6,7,8,9],water:true,
+    info:'Sommergast in Schwärmen, etwa Juni bis September.'},
+  wolfsbarsch:{name:'Wolfsbarsch',t:[10,13,20,24],act:{dusk:1,day:.6,night:.6},sky:{over:5,sun:-3},moon:3,season:[5,6,7,8,9,10],water:true,
+    info:'Küstenräuber in Brandung und Prielen, Hauptsaison etwa Mai bis Oktober. Für Wolfsbarsch gelten EU-Regeln zu Fangmenge und Mindestmaß, vorher prüfen.'},
+  hering:{name:'Hering',t:[3,5,12,15],act:{dusk:1,day:.8,night:.2},sky:{over:0,sun:0},moon:0,season:[3,4,5],water:true,
+    info:'Frühjahrsheringe ziehen etwa März bis Mai in Förden und Häfen. Auch als Köderfisch genutzt.'},
+  sandaal:{name:'Sandaal',t:[6,10,18,22],act:{dusk:.8,day:1,night:.1},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Wichtiger Köderfisch, meist mit kleinen Paternostern über Sandgrund.'},
+  grundel:{name:'Schwarzmundgrundel',t:[5,10,22,26],act:{dusk:.8,day:.9,night:.2},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Eingeschleppte Grundel, fast überall an Steinschüttungen. Brauchbarer Köderfisch.'},
+  sprotte:{name:'Sprotte',t:[5,8,16,19],act:{dusk:1,day:.8,night:.2},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Kleiner Schwarmfisch, als Köderfisch genutzt.'},
+  dorsch:{name:'Dorsch',t:[2,5,10,14],act:{dusk:1,day:.7,night:.5},sky:{over:0,sun:0},moon:0,water:true,banned:true,
+    info:'Freizeitfischerei auf Dorsch ist in der Ostsee 2026 ganzjährig verboten, auch in den Förden (Quelle: Land Schleswig-Holstein, EU-Verordnung 2025/2454). Beifang sofort schonend zurücksetzen.'},
+  bachforelle:{name:'Bachforelle',t:[4,8,15,18],act:{dusk:1,day:.6,night:.2},sky:{over:5,sun:-3},moon:3,
+    info:'Kühle, sauerstoffreiche Bäche. Schonzeit meist im Winter, je nach Bundesland verschieden.'},
+  regenbogenforelle:{name:'Regenbogenforelle',t:[4,10,18,21],act:{dusk:1,day:.7,night:.1},sky:{over:3,sun:0},moon:3,
+    info:'Etwas wärmetoleranter als die Bachforelle, häufig in Besatzgewässern.'},
+  aesche:{name:'Äsche',t:[4,8,16,19],act:{dusk:1,day:.8,night:0},sky:{over:3,sun:0},moon:0,
+    info:'Klare, kühle Fließgewässer. Vielerorts geschont, regionale Regeln prüfen.'},
+  doebel:{name:'Döbel',t:[6,12,22,26],act:{dusk:1,day:.8,night:.3},sky:{over:3,sun:0},moon:3,
+    info:'Allesfresser in Flüssen, oft unter überhängenden Bäumen.'},
+  barbe:{name:'Barbe',t:[10,15,23,26],act:{dusk:1,day:.5,night:.9},sky:{over:3,sun:0},moon:3,
+    info:'Bodenfisch in strömenden Flüssen, oft in der Dämmerung und nachts.'}
+});
+const WATERS={
+  binnen:{name:'Binnengewässer (See/Fluss)',big:['wels','zander','hecht','aal','karpfen','rapfen','schleie'],bait:['barsch','rotauge','gruendling','ukelei','rotfeder','brasse']},
+  ostsee:{name:'Ostsee (Küste/Förde)',big:['meerforelle','hornhecht','plattfisch','makrele','hering'],bait:['hering','sandaal','grundel','sprotte'],banned:['dorsch']},
+  nordsee:{name:'Nordsee (Küste/Watt)',big:['wolfsbarsch','makrele','plattfisch','hornhecht'],bait:['hering','sandaal','sprotte']},
+  bergland:{name:'Bergland (Forellengewässer)',big:['bachforelle','regenbogenforelle','hecht','barbe','aesche','doebel'],bait:['gruendling','rotauge']}
+};
+const WTYPE=()=>WATERS[state.waterMode==='auto'?state.waterAuto:state.waterMode]?(state.waterMode==='auto'?state.waterAuto:state.waterMode):'binnen';
+const isSea=()=>['ostsee','nordsee'].includes(WTYPE());
 const SP=()=>SPECIES[state.species]||SPECIES.zander;
 
 /* ---------- Wetter (Open-Meteo) ---------- */
 const wxKey=()=>state.lat.toFixed(3)+','+state.lng.toFixed(3);
-async function fetchWx(lat,lng,past,fwd){
+async function fetchWx(lat,lng,past,fwd,sea){
   const u='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+
     '&hourly=pressure_msl,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,temperature_2m'+
     '&past_days='+past+'&forecast_days='+fwd+'&timeformat=unixtime&timezone=auto&wind_speed_unit=kmh';
   const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);
-  const h=(await r.json()).hourly;
-  return {key:(+lat).toFixed(3)+','+(+lng).toFixed(3),fetched:Date.now(),t:h.time.map(x=>x*1000),p:h.pressure_msl,rh:h.relative_humidity_2m,cc:h.cloud_cover,
-    ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m};
+  const j=await r.json(),h=j.hourly;
+  const out={key:(+lat).toFixed(3)+','+(+lng).toFixed(3),fetched:Date.now(),elev:j.elevation,t:h.time.map(x=>x*1000),p:h.pressure_msl,rh:h.relative_humidity_2m,cc:h.cloud_cover,
+    ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m,sst:null};
+  if(sea){
+    try{
+      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lng+'&hourly=sea_surface_temperature&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
+      if(m.ok){const mj=(await m.json()).hourly;const mp=new Map();mj.time.forEach((x,i)=>{if(mj.sea_surface_temperature[i]!=null)mp.set(x*1000,mj.sea_surface_temperature[i]);});
+        if(mp.size)out.sst=out.t.map(x=>mp.has(x)?mp.get(x):null);}
+    }catch(_){}
+  }
+  return out;
 }
 async function loadWeather(force){
   if(!force&&wx&&wx.key===wxKey()&&Date.now()-wx.fetched<30*60e3)return;
   $('wxStatus').textContent='Wetterdaten werden geladen …';
   try{
-    wx=await fetchWx(state.lat,state.lng,3,10);
+    wx=await fetchWx(state.lat,state.lng,3,10,isSea());
+    if(wx.sst==null&&isSea())wx.seaTried=true;
     persist();
   }catch(e){
     $('wxStatus').textContent=wx&&wx.key===wxKey()?'Aktualisierung fehlgeschlagen, zeige Daten vom '+new Date(wx.fetched).toLocaleString('de-DE')+'.':
@@ -334,7 +397,8 @@ function wxAt(t){
   if(i<3||i>=wx.t.length||wx.p[i]==null||wx.p[i-3]==null)return null;
   const dt=(i>=24&&wx.tmp[i-24]!=null)?wx.tmp[i]-wx.tmp[i-24]:null;
   const win=wx.tmp.slice(Math.max(0,i-71),i+1).filter(v=>v!=null),t72=win.length>=24?win.reduce((a,b)=>a+b,0)/win.length:wx.tmp[i];
-  return {dt,t72,p:wx.p[i],dp:wx.p[i]-wx.p[i-3],rh:wx.rh[i],cc:wx.cc[i],ws:wx.ws[i],wg:wx.wg[i],pr:wx.pr[i],tmp:wx.tmp[i]};
+  const sstv=wx.sst&&wx.sst[i]!=null?wx.sst[i]:null;
+  return {dt:sstv!=null?null:dt,t72:sstv!=null?sstv:t72,sst:sstv,p:wx.p[i],dp:wx.p[i]-wx.p[i-3],rh:wx.rh[i],cc:wx.cc[i],ws:wx.ws[i],wg:wx.wg[i],pr:wx.pr[i],tmp:wx.tmp[i]};
 }
 function pressureRate(dp){
   if(dp>=2)return ['stark steigend',-5]; if(dp>=0.7)return ['leicht steigend',0];
@@ -343,7 +407,7 @@ function pressureRate(dp){
 function tempRate(w,sp){
   const v=w.t72,[a,b,c,d]=sp.t;
   const f=v<=a||v>=d?0:v<b?(v-a)/(b-a):v<=c?1:(d-v)/(d-c);
-  let pts=20*f,lab='Ø 3 Tage '+r1(v)+' °C, '+(f>=0.95?'optimal':f>0?(v<b?'etwas kühl':'etwas warm'):(v<=a?'zu kalt':'zu warm'));
+  let pts=20*f,lab=(w.sst!=null?'Wasser (Meer) ':'Ø 3 Tage ')+r1(v)+' °C, '+(f>=0.95?'optimal':f>0?(v<b?'etwas kühl':'etwas warm'):(v<=a?'zu kalt':'zu warm'));
   if(w.dt!=null){if(w.dt>=2&&v<c){pts+=5;lab+=', wärmer als gestern';}else if(w.dt<=-4){pts-=5;lab+=', Kälteeinbruch';}}
   return [lab,pts];
 }
@@ -393,7 +457,8 @@ function analyze(){
     const timeLabel=dusk>.5?'Dämmerung':isDay?'Tag':'Nacht';
     const W=wxAt(t),pr=W?pressureRate(W.dp):['keine Daten',0],sk=W?skyRate(W,sp,isDay):['keine Daten',0],tp=W?tempRate(W,sp):['keine Daten',0];
     const busy=pressureDay(t);
-    const parts={base:10,dusk:30*timeF,temp:tp[1],phase:phaseBonus,major:8*major,minor:4*minor,pressure:pr[1],sky:sk[1],busy:busy?-10:0};
+    const inSeason=!sp.season||sp.season.includes(new Date(t).getMonth()+1);
+    const parts={base:10,dusk:30*timeF,temp:tp[1],phase:phaseBonus,major:8*major,minor:4*minor,pressure:pr[1],sky:sk[1],busy:busy?-10:0,season:inSeason?0:-25};
     const total=Math.round(Math.max(0,Math.min(100,Object.values(parts).reduce((a,b)=>a+b,0))));
     return {total,parts,W,prLabel:pr[0],skyLabel:sk[0],tempLabel:tp[0],busy,timeLabel};
   }
@@ -425,7 +490,7 @@ function render(){
   series.forEach(p=>{if(p.total>=thr){if(!cur)cur={a:p.t,b:p.t,peak:p};else{cur.b=p.t;if(p.total>cur.peak.total)cur.peak=p;}}else if(cur){segs.push(cur);cur=null;}});
   if(cur)segs.push(cur);
   segs.sort((x,y)=>y.peak.total-x.peak.total);
-  $('windows').innerHTML=segs.slice(0,4).sort((x,y)=>x.a-y.a).map(s=>`<li><span class="t">${fmt(s.a)} – ${fmt(s.b+10*6e4)}</span><span class="p">bis ${s.peak.total}</span></li>`).join('')
+  $('windows').innerHTML=SP().banned?'<li><span class="p">Für diese Art gilt derzeit ein Fangverbot. Keine Zeitfenster.</span></li>':segs.slice(0,4).sort((x,y)=>x.a-y.a).map(s=>`<li><span class="t">${fmt(s.a)} – ${fmt(s.b+10*6e4)}</span><span class="p">bis ${s.peak.total}</span></li>`).join('')
     ||'<li><span class="p">Kein Fenster über 40. Dämmerung bleibt die beste Wahl.</span></li>';
 
   const rows=[],add=(list,label)=>list.filter(t=>t>=ds&&t<de).forEach(t=>rows.push([t,label]));
@@ -442,8 +507,8 @@ function renderDetail(){
   const t=selT!=null?selT:(isToday?now:best.t);
   const shown={t,...A.score(t)};
   const label=selT!=null?`${dayLabel(t)}, ${fmt(t)} Uhr`:(isToday?`Jetzt, ${fmt(t)} Uhr`:`${dayLabel(t)}, ${fmt(t)} Uhr (Tagesbestwert)`);
-  const [vt,vc]=verdict(shown.total);
-  $('score').textContent=shown.total;$('score').style.color=vc;$('verdict').textContent=vt;
+  let [vt,vc]=verdict(shown.total);
+  $('score').textContent=SP().banned?'⛔':shown.total;$('score').style.color=SP().banned?'var(--bad)':vc;$('verdict').textContent=SP().banned?'Fangverbot':vt;
   $('scoreSub').textContent=`${label}. Tageshöchstwert ${best.total} um ${fmt(best.t)} Uhr.`;
   $('nowBtn').hidden=isToday&&selT==null;
   const g=$('cursor');
@@ -455,7 +520,7 @@ function renderDetail(){
   $('wx').innerHTML=W?[
     ['Luftdruck',r1(W.p)+' hPa'],['Tendenz (3 Std.)',(W.dp>0?'+':'')+r1(W.dp)+' hPa, '+shown.prLabel],
     ['Luftfeuchtigkeit',Math.round(W.rh)+' %'],['Bewölkung',Math.round(W.cc)+' %'],
-    ['Wind / Böen',Math.round(W.ws)+' / '+Math.round(W.wg)+' km/h'],['Niederschlag',r1(W.pr)+' mm/h'],['Temperatur',r1(W.tmp)+' °C'],['Ø Luft 3 Tage (Näherung Wasser)',r1(W.t72)+' °C']
+    ['Wind / Böen',Math.round(W.ws)+' / '+Math.round(W.wg)+' km/h'],['Niederschlag',r1(W.pr)+' mm/h'],['Temperatur',r1(W.tmp)+' °C'],[W.sst!=null?'Wassertemperatur (Meer)':'Ø Luft 3 Tage (Näherung Wasser)',r1(W.t72)+' °C']
   ].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join(''):'';
   if(wx&&wx.key===wxKey())$('wxStatus').textContent=W?'Open-Meteo, Stand '+new Date(wx.fetched).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' Uhr.':
     'Für dieses Datum gibt es keine Wetterdaten (Vorhersage reicht etwa 10 Tage). Der Wert enthält nur Mond und Sonne.';
@@ -465,7 +530,7 @@ function renderDetail(){
     [`Mondphase: ${A.phaseLabel}`,rr(p.phase)],
     ['Mond im Zenit/Nadir (max. 8)',rr(p.major)],['Mondauf-/untergang (max. 4)',rr(p.minor)],
     [`Luftdruck: ${shown.prLabel} (±5)`,rr(p.pressure)],[`Himmel: ${shown.skyLabel}`,rr(p.sky)],
-    [`Angeldruck: ${shown.busy||'Werktag'}`,rr(p.busy)]].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('');
+    [`Angeldruck: ${shown.busy||'Werktag'}`,rr(p.busy)],...(SP().season?[[`Saison: ${p.season<0?'außerhalb der Hauptsaison':'Hauptsaison'}`,rr(p.season)]]:[])].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('');
 }
 
 let animated=false,selT=null;
@@ -495,6 +560,14 @@ let pending=false;
 chart.addEventListener('pointerdown',onPoint);
 chart.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'||e.buttons)onPoint(e);});
 
+function geoError(err){
+  const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua),android=/Android/.test(ua);
+  if(err&&err.code===1)return ios?'Standort blockiert. iPhone: Einstellungen › Datenschutz & Sicherheit › Ortungsdienste einschalten, dort „Safari-Websites“ auf „Beim Verwenden der App“ stellen. Zusätzlich in Safari links in der Adressleiste auf „aA“ › Website-Einstellungen › Standort › „Erlauben“.'
+    :android?'Standort blockiert. In Chrome auf das Symbol links in der Adressleiste tippen › Berechtigungen › Standort › „Zulassen“. Außerdem muss in den Android-Einstellungen „Standort“ eingeschaltet sein.'
+    :'Standort blockiert. In den Browser-Einstellungen für diese Seite den Standort erlauben.';
+  if(err&&err.code===3)return 'Standortabfrage hat zu lange gedauert. Unter freiem Himmel erneut versuchen.';
+  return 'Standort derzeit nicht ermittelbar. Ortungsdienste prüfen oder Ort suchen.';
+}
 /* ---------- Ortssuche (eigene Liste + Open-Meteo Geocoding) ---------- */
 const PLACES=[
  ['Berlin Mitte',52.5200,13.4050],['Berlin Spandau',52.5357,13.1997],['Berlin Charlottenburg',52.5163,13.3041],
@@ -534,10 +607,28 @@ async function geocode(q){
   return [];
 }
 const qEl=$('placeQuery'),hitsEl=$('hits'),msg=$('locMsg');
+async function detectWater(lat,lng){
+  // 1) Küste in der Nähe? (OpenStreetMap über Overpass)  2) sonst Höhe aus Open-Meteo
+  let coast=null;
+  try{
+    const q=`[out:json][timeout:8];way["natural"="coastline"](around:3000,${lat},${lng});out ids 1;`;
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    if(r.ok){const j=await r.json();coast=j.elements&&j.elements.length>0;}
+  }catch(_){}
+  if(coast)return (lng>=9.3&&lat>=53.85)?'ostsee':'nordsee';
+  let elev=wx&&wx.key===(+lat).toFixed(3)+','+(+lng).toFixed(3)?wx.elev:null;
+  if(elev==null){try{const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lng);if(r.ok)elev=(await r.json()).elevation[0];}catch(_){}}
+  if(coast===null&&elev==null)return null;
+  return elev!=null&&elev>=450?'bergland':'binnen';
+}
 async function setPlace(name,lat,lng){
   if(map)map._userMoved=false;
   state.place=name;state.lat=+(+lat).toFixed(4);state.lng=+(+lng).toFixed(4);persist();
-  hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();render();await loadWeather(true);render();
+  hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();render();
+  const wt=await detectWater(state.lat,state.lng);
+  if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
+    if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;}
+  await loadWeather(true);render();
 }
 function showHits(list){
   hitsEl.innerHTML=list.slice(0,6).map((p,i)=>`<li><button type="button" data-i="${i}">${p.name}<small>${(+p.lat).toFixed(3)}, ${(+p.lng).toFixed(3)}</small></button></li>`).join('');
@@ -560,12 +651,22 @@ $('geo').onclick=()=>{
   if(!navigator.geolocation){msg.textContent='Standortabfrage wird hier nicht unterstützt.';return;}
   msg.textContent='Standort wird abgefragt …';
   navigator.geolocation.getCurrentPosition(p=>setPlace('Aktueller Standort',p.coords.latitude,p.coords.longitude),
-    ()=>{msg.textContent='Standort nicht freigegeben. Ort suchen oder Koordinaten eingeben.';},{timeout:10000});
+    err=>{msg.textContent=geoError(err);},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 };
 $('refresh').onclick=async()=>{await loadWeather(true);render();};
 function speciesChips(){
-  const el=$('species');
-  el.innerHTML=Object.entries(SPECIES).map(([k,v])=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${v.name}</button>`).join('');
+  const el=$('species'),W=WATERS[WTYPE()];
+  const all=[...W.big,...W.bait,...(W.banned||[])];
+  if(!all.includes(state.species)){state.species=W.big[0];persist();}
+  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${SPECIES[k].banned?'⛔ ':''}${SPECIES[k].name}</button>`;
+  const auto=state.waterMode==='auto';
+  el.innerHTML=`<div class="wrow"><label class="label" for="waterSel">Gewässer</label><select id="waterSel">
+      <option value="auto"${auto?' selected':''}>Automatisch: ${WATERS[state.waterAuto].name}</option>
+      ${Object.entries(WATERS).map(([k,v])=>`<option value="${k}"${!auto&&state.waterMode===k?' selected':''}>${v.name}</option>`).join('')}</select></div>
+    <p class="label grp">Zielfische (Raub- und Großfische)</p><div class="chiprow">${W.big.map(chip).join('')}</div>
+    <p class="label grp">Köder- &amp; Kleinfische</p><div class="chiprow">${W.bait.filter(k=>!W.big.includes(k)).map(chip).join('')}</div>
+    ${W.banned?`<p class="label grp">Gesperrt</p><div class="chiprow">${W.banned.map(chip).join('')}</div>`:''}`;
+  $('waterSel').onchange=async e=>{state.waterMode=e.target.value;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();render();await loadWeather(true);render();};
   el.onclick=e=>{const b=e.target.closest('button');if(!b)return;state.species=b.dataset.v;persist();speciesChips();render();};
 }
 speciesChips();
@@ -645,8 +746,16 @@ let fPos={lat:state.lat,lng:state.lng,src:'Suchort'};
 function localInput(t){const d=new Date(t-new Date(t).getTimezoneOffset()*6e4);return d.toISOString().slice(0,16);}
 function syncFormPlace(){fPos={lat:state.lat,lng:state.lng,src:'Suchort'};fEl('fPlace').value=state.place;showPos();}
 function showPos(){fEl('fPos').textContent=`${fPos.lat.toFixed(5)}, ${fPos.lng.toFixed(5)} (${fPos.src})`;}
+function fillSpeciesSelect(){
+  const sel=fEl('fSpecies'),cur=sel.value,W=WATERS[WTYPE()],used=new Set();
+  const opt=k=>{used.add(k);return `<option value="${k}">${SPECIES[k].name}</option>`;};
+  let html=`<optgroup label="Zielfische">${W.big.map(opt).join('')}</optgroup><optgroup label="Köderfische">${W.bait.filter(k=>!used.has(k)).map(opt).join('')}</optgroup>`;
+  const rest=Object.keys(SPECIES).filter(k=>!used.has(k)).sort((a,b)=>SPECIES[a].name.localeCompare(SPECIES[b].name,'de'));
+  html+=`<optgroup label="Andere Gewässer">${rest.map(k=>`<option value="${k}">${SPECIES[k].name}</option>`).join('')}</optgroup><option value="andere">Andere …</option>`;
+  sel.innerHTML=html;sel.value=cur&&[...sel.options].some(o=>o.value===cur)?cur:state.species;
+}
 function initForm(){
-  fEl('fSpecies').innerHTML=Object.entries(SPECIES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')+'<option value="andere">Andere …</option>';
+  fillSpeciesSelect();
   fEl('fSpecies').value=state.species;
   fEl('fSpecies').onchange=()=>{fEl('fOtherWrap').hidden=fEl('fSpecies').value!=='andere';};
   fEl('fTime').value=localInput(Date.now());
@@ -656,7 +765,7 @@ fEl('fGps').onclick=()=>{
   if(!navigator.geolocation){fEl('fMsg').textContent='GPS wird hier nicht unterstützt.';return;}
   fEl('fMsg').textContent='GPS-Position wird abgefragt …';
   navigator.geolocation.getCurrentPosition(p=>{fPos={lat:p.coords.latitude,lng:p.coords.longitude,src:'GPS ±'+Math.round(p.coords.accuracy)+' m'};showPos();fEl('fMsg').textContent='';},
-    ()=>{fEl('fMsg').textContent='GPS nicht freigegeben. Es wird der Suchort verwendet.';},{enableHighAccuracy:true,timeout:15000});
+    err=>{fEl('fMsg').textContent=geoError(err)+' Bis dahin gilt der Suchort.';},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 };
 function withContext(ctx,fn){
   const saved={lat:state.lat,lng:state.lng,species:state.species,date:state.date},sw=wx;
@@ -664,24 +773,27 @@ function withContext(ctx,fn){
   try{return fn();}finally{Object.assign(state,saved);wx=sw;}
 }
 const dstr=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-let editingId=null;
+let editingId=null,confirmBanned=false;
 fEl('fSave').onclick=async()=>{
   const m=fEl('fMsg'),t=new Date(fEl('fTime').value).getTime();
   if(!isFinite(t)){m.textContent='Datum und Uhrzeit fehlen.';return;}
   if(t>Date.now()+36e5){m.textContent='Der Zeitpunkt liegt in der Zukunft.';return;}
   if(t<Date.now()-90*dayMs)m.textContent='Älter als 3 Monate: Wetterdaten sind dafür nicht verfügbar, Mond und Sonne schon.';
-  const spKey=fEl('fSpecies').value,spName=spKey==='andere'?(fEl('fOther').value.trim()||'Andere'):SPECIES[spKey].name;
+  const spKey=fEl('fSpecies').value;
+  if(SPECIES[spKey]&&SPECIES[spKey].banned&&fEl('fResult').value==='fang'&&!confirmBanned){confirmBanned=true;m.textContent='Hinweis: Für '+SPECIES[spKey].name+' gilt derzeit ein Fangverbot, Beifang muss sofort zurückgesetzt werden. Zum Speichern (z. B. als dokumentierter Beifang) erneut auf Speichern tippen.';return;}
+  confirmBanned=false;
+  const spName=spKey==='andere'?(fEl('fOther').value.trim()||'Andere'):SPECIES[spKey].name;
   const num=id=>{const v=parseFloat(String(fEl(id).value).replace(',','.'));return isFinite(v)?v:null;};
   fEl('fSave').disabled=true;m.textContent='Wetter und Mond werden ergänzt …';
   let data=null;const key=fPos.lat.toFixed(3)+','+fPos.lng.toFixed(3);
   if(wx&&wx.key===key&&t>=wx.t[3]&&t<=wx.t[wx.t.length-1])data=wx;
-  else if(t>=Date.now()-91*dayMs){try{data=await fetchWx(fPos.lat,fPos.lng,92,1);}catch(_){data=null;}}
+  else if(t>=Date.now()-91*dayMs){try{data=await fetchWx(fPos.lat,fPos.lng,92,1,isSea());}catch(_){data=null;}}
   const snap=withContext({state:{lat:fPos.lat,lng:fPos.lng,species:SPECIES[spKey]?spKey:state.species,date:dstr(t)},wx:data},()=>{
     const a=analyze(),s=a.score(t);
     return {index:SPECIES[spKey]?s.total:null,time:s.timeLabel,moon:phaseName(a.il.phase),illum:Math.round(a.il.fraction*100),W:s.W,prLabel:s.prLabel};
   });
   const W=snap.W;
-  const e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t,result:fEl('fResult').value,species:spName,speciesKey:spKey,
+  const e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t,result:fEl('fResult').value,species:spName,speciesKey:spKey,water:WTYPE(),
     weight:num('fWeight'),length:num('fLength'),place:fEl('fPlace').value.trim(),lat:+fPos.lat.toFixed(5),lng:+fPos.lng.toFixed(5),
     bait:fEl('fBait').value.trim(),depth:num('fDepth'),note:fEl('fNote').value.trim(),index:snap.index,daytime:snap.time,moon:snap.moon,illum:snap.illum,
     wx:W?wxRecord(W,snap.prLabel):null};
@@ -707,7 +819,7 @@ async function backfillWeather(){
   backfilling=true;let n=0;
   try{
     for(const c of todo){
-      let data;try{data=await fetchWx(c.lat,c.lng,92,1);}catch(_){break;}
+      let data;try{data=await fetchWx(c.lat,c.lng,92,1,c.water?['ostsee','nordsee'].includes(c.water):isSea());}catch(_){break;}
       const snap=withContext({state:{lat:c.lat,lng:c.lng,species:SPECIES[c.speciesKey]?c.speciesKey:state.species,date:dstr(c.t)},wx:data},()=>{
         const a=analyze(),s=a.score(c.t);return {index:SPECIES[c.speciesKey]?s.total:null,W:s.W,prLabel:s.prLabel,time:s.timeLabel};});
       if(snap.W){c.wx=wxRecord(snap.W,snap.prLabel);c.index=snap.index;c.daytime=snap.time;n++;}
