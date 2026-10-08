@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Beißindex">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#12343b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>Beißindex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#e8efed; --card:#f7faf9; --ink:#12343b; --muted:#557077; --line:#c9d8d6;
+  --bobber:#d7362b; --reed:#5f7f2f; --sun:#c98a1c; --fill:rgba(18,52,59,.10); --chip:#dde7e5;
+  --good:#2f7d4f; --mid:#c98a1c; --bad:#b4442f;
+  color-scheme:light dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c1a20; --card:#13262e; --ink:#e3eeec; --muted:#8fa9ad; --line:#21404a;
+    --bobber:#ff5a45; --reed:#9dbb5c; --sun:#e6ad48; --fill:rgba(227,238,236,.08); --chip:#1b333c;
+    --good:#6cc48c; --mid:#e6ad48; --bad:#ff7a63;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1a20; --card:#13262e; --ink:#e3eeec; --muted:#8fa9ad; --line:#21404a;
+  --bobber:#ff5a45; --reed:#9dbb5c; --sun:#e6ad48; --fill:rgba(227,238,236,.08); --chip:#1b333c;
+  --good:#6cc48c; --mid:#e6ad48; --bad:#ff7a63;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px; line-height:1.5;
+}
+main{max-width:640px; margin:0 auto; padding:20px 16px 40px}
+h1,h2,.num{font-family:"Bricolage Grotesque","Atkinson Hyperlegible",system-ui,sans-serif}
+h1{font-size:1.75rem; font-weight:800; margin:0; letter-spacing:-.02em}
+h2{font-size:1.1rem; font-weight:700; margin:0 0 10px}
+.top{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap}
+.top .place{color:var(--muted); font-size:.95rem}
+input[type=date],input[type=number],input[type=text]{
+  font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line);
+  border-radius:10px; padding:8px 10px; min-height:42px;
+}
+input:focus-visible,button:focus-visible{outline:3px solid var(--bobber); outline-offset:2px}
+
+.hero{background:var(--card); border-radius:22px; padding:20px 18px 12px; margin-bottom:14px; border:1px solid var(--line)}
+.score-row{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+.num{font-size:5.2rem; line-height:.9; font-weight:800; letter-spacing:-.04em}
+.verdict{font-size:1.25rem; font-weight:700}
+.sub{color:var(--muted); font-size:.95rem}
+.chart-wrap{margin:14px -6px 0; position:relative}
+svg.chart{display:block; width:100%; height:auto; touch-action:pan-y}
+.readout{min-height:1.5em; color:var(--muted); font-size:.92rem; padding:0 6px}
+.legend{display:flex; gap:14px; flex-wrap:wrap; font-size:.85rem; color:var(--muted); padding:4px 6px 0}
+.legend span::before{content:""; display:inline-block; width:12px; height:3px; border-radius:2px; margin-right:6px; vertical-align:middle; background:currentColor}
+.lg-major{color:var(--bobber)} .lg-minor{color:var(--reed)} .lg-sun{color:var(--sun)}
+.legend span{color:var(--muted)}
+.legend .lg-major::before{background:var(--bobber)} .legend .lg-minor::before{background:var(--reed)} .legend .lg-sun::before{background:var(--sun)}
+
+section.block{padding:16px 2px; border-top:1px solid var(--line)}
+.windows{list-style:none; margin:0; padding:0; display:grid; gap:8px}
+.windows li{display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--line); border-left:5px solid var(--bobber); border-radius:12px; padding:10px 14px}
+.windows .t{font-weight:700; font-size:1.05rem}
+.windows .p{color:var(--muted)}
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px}
+.chips button{
+  font:inherit; font-size:.95rem; color:var(--ink); background:var(--chip); border:1px solid transparent;
+  border-radius:999px; padding:8px 14px; min-height:40px; cursor:pointer;
+}
+.chips button[aria-pressed="true"]{background:var(--ink); color:var(--card)}
+.label{font-size:.92rem; color:var(--muted); margin:0 0 6px}
+table{width:100%; border-collapse:collapse; font-size:.97rem}
+td{padding:7px 0; border-bottom:1px solid var(--line)}
+td:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:700}
+.factors td:last-child{font-weight:400; color:var(--muted)}
+.search{display:flex; gap:8px}
+.search input{flex:1; min-width:0}
+.hits{list-style:none; margin:8px 0 0; padding:0; display:grid; gap:6px}
+.hits button{width:100%; text-align:left; font:inherit; color:var(--ink); background:var(--chip); border:0; border-radius:10px; padding:10px 12px; min-height:44px; cursor:pointer}
+.hits small{color:var(--muted); display:block}
+.locbox{margin:0 0 14px}
+#map{height:300px;border-radius:14px;border:1px solid var(--line);overflow:hidden;background:var(--chip);z-index:0}
+.maplegend span::before{border-radius:50%;width:10px;height:10px}
+.legend .mk-place::before{background:var(--bobber)}.legend .mk-fang::before{background:#2f9e5a}.legend .mk-biss::before{background:#e0a020}.legend .mk-null::before{background:#8a9699}
+.leaflet-popup-content{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:14px;line-height:1.4;margin:10px 12px}
+.leaflet-popup-content .pbtn{display:block;width:100%;margin-top:6px;font:inherit;font-weight:700;border:0;border-radius:8px;padding:8px 10px;background:#12343b;color:#fff;cursor:pointer}
+.leaflet-popup-content .pbtn.alt{background:#dde7e5;color:#12343b}
+.install{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--bobber);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:.92rem}
+.install button{display:inline-block;margin-right:8px;margin-top:8px;font:inherit;font-weight:700;border:0;border-radius:8px;padding:6px 12px;background:var(--chip);color:var(--ink);cursor:pointer}
+.datebox{display:flex;gap:8px;align-items:center}
+.datebox .btn{min-height:42px;padding:8px 12px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+.form .full{grid-column:1/-1}
+.form input,.form select,.form textarea{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:42px}
+.posrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.stats{margin:12px 0 4px;font-size:.95rem}
+.catches{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.catches li{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.catches .h{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+.catches .d{font-size:.88rem;color:var(--muted)}
+.catches .a{display:flex;gap:14px;margin-top:6px;font-size:.88rem}
+.catches .a a,.catches .a button{color:var(--bobber);background:none;border:0;padding:0;font:inherit;cursor:pointer;text-decoration:underline}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.filebtn{display:inline-flex;align-items:center}
+.status{font-size:.88rem;color:var(--muted);margin-top:6px}
+.wxhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.wxhead .btn{min-height:36px;padding:6px 12px;font-size:.9rem}
+.btn{
+  font:inherit; font-weight:700; border:0; border-radius:10px; padding:10px 14px; min-height:44px; cursor:pointer;
+  background:var(--ink); color:var(--card);
+}
+.btn.ghost{background:var(--chip); color:var(--ink)}
+.msg{font-size:.9rem; color:var(--muted); min-height:1.3em; margin-top:6px}
+.note{font-size:.88rem; color:var(--muted); margin-top:8px}
+@media (prefers-reduced-motion:no-preference){
+  .curve{stroke-dasharray:2000; stroke-dashoffset:2000; animation:draw 1.1s ease-out forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="install" id="installHint" hidden><b>Als App installieren:</b> <span id="installText"></span> <button type="button" id="installBtn" hidden>Jetzt installieren</button><button type="button" id="installClose" aria-label="Hinweis schließen">Verstanden</button></div>
+  <div class="top">
+    <div>
+      <h1>Beißindex</h1>
+      <div class="place" id="placeLabel">Berlin</div>
+    </div>
+    <div class="datebox"><input type="date" id="date" aria-label="Datum"><button type="button" class="btn ghost" id="nowBtn">Jetzt</button></div>
+  </div>
+  <div class="locbox">
+    <div class="search">
+      <input type="text" id="placeQuery" placeholder="Ort oder Gewässer, z. B. Berlin Spandau" aria-label="Ort suchen" autocomplete="off">
+      <button class="btn" id="findPlace">Suchen</button>
+      <button class="btn ghost" id="geo" aria-label="Aktuellen Standort nutzen" title="Aktuellen Standort nutzen">📍</button>
+    </div>
+    <ul class="hits" id="hits"></ul>
+    <div class="msg" id="locMsg"></div>
+  </div>
+  <div class="chips" id="species" role="group" aria-label="Fischart"></div>
+  <p class="sub" id="speciesInfo" style="margin:-6px 0 14px"></p>
+
+  <div class="hero">
+    <div class="score-row">
+      <div class="num" id="score">–</div>
+      <div>
+        <div class="verdict" id="verdict"></div>
+        <div class="sub" id="scoreSub"></div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <svg class="chart" id="chart" viewBox="0 0 600 230" role="img" aria-label="Verlauf des Beißindex über den Tag"></svg>
+      <div class="readout" id="readout">Tippe in die Kurve für einen Zeitpunkt.</div>
+      <div class="legend">
+        <span class="lg-major">Mond Zenit/Nadir</span>
+        <span class="lg-minor">Mondauf-/untergang</span>
+        <span class="lg-sun">Sonnenauf-/untergang</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="block">
+    <h2>Beste Zeitfenster</h2>
+    <ul class="windows" id="windows"></ul>
+  </section>
+
+  <section class="block" id="kartebox">
+    <div class="wxhead"><h2>Karte</h2><button type="button" class="btn ghost" id="mapFit">Alle Fänge</button></div>
+    <div id="map" role="application" aria-label="Karte mit Standort und Fängen"></div>
+    <div class="legend maplegend"><span class="mk-place">Standort</span><span class="mk-fang">Fang</span><span class="mk-biss">Biss</span><span class="mk-null">Nullnummer</span></div>
+    <p class="note" id="mapNote">Tippe auf die Karte, um dort den Standort zu setzen oder eine Fangposition zu übernehmen.</p>
+  </section>
+
+  <section class="block" id="fangbuch">
+    <h2 id="fTitle">Fangbuch</h2>
+    <div class="form">
+      <label>Ergebnis<select id="fResult"><option value="fang">Fang</option><option value="biss">Biss ohne Fang</option><option value="null">Nullnummer</option></select></label>
+      <label>Fischart<select id="fSpecies"></select></label>
+      <label class="full" id="fOtherWrap" hidden>Andere Fischart<input type="text" id="fOther" placeholder="z. B. Döbel"></label>
+      <label class="full">Datum und Uhrzeit<input type="datetime-local" id="fTime"></label>
+      <label>Gewicht (kg)<input type="text" inputmode="decimal" id="fWeight" placeholder="z. B. 4,2"></label>
+      <label>Länge (cm)<input type="text" inputmode="decimal" id="fLength" placeholder="z. B. 85"></label>
+      <label class="full">Gewässer / Stelle<input type="text" id="fPlace"></label>
+      <div class="full posrow"><span class="sub" id="fPos"></span><button type="button" class="btn ghost" id="fGps">GPS-Position</button></div>
+      <label>Köder / Methode<input type="text" id="fBait" placeholder="z. B. Gummifisch 10 cm"></label>
+      <label>Tiefe (m)<input type="text" inputmode="decimal" id="fDepth"></label>
+      <label class="full">Notiz<textarea id="fNote" rows="2"></textarea></label>
+      <button type="button" class="btn full" id="fSave">Eintrag speichern</button>
+      <button type="button" class="btn ghost full" id="fCancel" hidden>Bearbeiten abbrechen</button>
+    </div>
+    <div class="msg" id="fMsg"></div>
+    <div class="stats" id="fStats"></div>
+    <ul class="catches" id="catchList"></ul>
+    <div class="tools">
+      <button type="button" class="btn ghost" id="fCsv">CSV exportieren</button>
+      <button type="button" class="btn ghost" id="fBackup">Sicherung speichern</button>
+      <label class="btn ghost filebtn">Sicherung laden<input type="file" id="fImport" accept=".json,application/json" hidden></label>
+    </div>
+    <p class="note">Wetter, Mond und Beißindex werden beim Speichern automatisch zum Zeitpunkt und Ort des Eintrags ergänzt (bis etwa 3 Monate rückwirkend). Die Einträge liegen nur in diesem Browser. Mach regelmäßig eine Sicherung.</p>
+  </section>
+
+  <section class="block">
+    <div class="wxhead"><h2 id="wxTitle">Wetter</h2><button class="btn ghost" id="refresh">Aktualisieren</button></div>
+    <table id="wx"></table>
+    <div class="status" id="wxStatus">Wetterdaten werden geladen …</div>
+  </section>
+
+  <section class="block">
+    <h2>Mond und Sonne</h2>
+    <table id="events"></table>
+  </section>
+
+  <section class="block">
+    <h2>So setzt sich der Wert zusammen</h2>
+    <table class="factors" id="factors"></table>
+    <p class="note">Gewichtung nach Studienlage, angepasst je Fischart: Tageszeit-Aktivität und Temperatur zählen am meisten. Temperaturbereiche und Aktivitätsmuster sind Richtwerte aus der Fischbiologie; als Wassertemperatur dient das 3-Tage-Mittel der Luft, das bei tiefen Seen deutlich abweichen kann, Neu- und Vollmond geben einen kleinen Bonus (Hecht-Studie IGB 2010, Muskie-Daten Nordamerika). Solunarzeiten zählen kaum, da sie in Tests keinen Zusammenhang zeigten. Luftdruck ist kaum belegt und nur schwach gewichtet. Wochenenden und Feiertage gelten wegen höheren Angeldrucks als Abzug. Wetter live von Open-Meteo (u. a. DWD ICON). Die Werte bleiben eine Schätzung, keine Messung.</p>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------- Astronomie (nach SunCalc, V. Agafonkin, BSD) ---------- */
+const rad=Math.PI/180, dayMs=864e5, J1970=2440588, J2000=2451545, e=rad*23.4397;
+const toDays=d=>d.valueOf()/dayMs-0.5+J1970-J2000;
+const RA=(l,b)=>Math.atan2(Math.sin(l)*Math.cos(e)-Math.tan(b)*Math.sin(e),Math.cos(l));
+const DEC=(l,b)=>Math.asin(Math.sin(b)*Math.cos(e)+Math.cos(b)*Math.sin(e)*Math.sin(l));
+const sidereal=(d,lw)=>rad*(280.16+360.9856235*d)-lw;
+const altitude=(H,phi,dec)=>Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(H));
+function sunCoords(d){
+  const M=rad*(357.5291+0.98560028*d);
+  const C=rad*(1.9148*Math.sin(M)+0.02*Math.sin(2*M)+0.0003*Math.sin(3*M));
+  const L=M+C+rad*102.9372+Math.PI;
+  return {dec:DEC(L,0), ra:RA(L,0)};
+}
+function moonCoords(d){
+  const L=rad*(218.316+13.176396*d), M=rad*(134.963+13.064993*d), F=rad*(93.272+13.229350*d);
+  const l=L+rad*6.289*Math.sin(M), b=rad*5.128*Math.sin(F), dist=385001-20905*Math.cos(M);
+  return {ra:RA(l,b), dec:DEC(l,b), dist};
+}
+function sunAlt(t,lat,lng){const d=toDays(t),c=sunCoords(d);return altitude(sidereal(d,rad*-lng)-c.ra,rad*lat,c.dec)/rad;}
+function moonAlt(t,lat,lng){const d=toDays(t),c=moonCoords(d);return altitude(sidereal(d,rad*-lng)-c.ra,rad*lat,c.dec)/rad;}
+function moonIllum(t){
+  const d=toDays(t), s=sunCoords(d), m=moonCoords(d), sd=149598000;
+  const phi=Math.acos(Math.sin(s.dec)*Math.sin(m.dec)+Math.cos(s.dec)*Math.cos(m.dec)*Math.cos(s.ra-m.ra));
+  const inc=Math.atan2(sd*Math.sin(phi),m.dist-sd*Math.cos(phi));
+  const ang=Math.atan2(Math.cos(s.dec)*Math.sin(s.ra-m.ra),Math.sin(s.dec)*Math.cos(m.dec)-Math.cos(s.dec)*Math.sin(m.dec)*Math.cos(s.ra-m.ra));
+  return {fraction:(1+Math.cos(inc))/2, phase:0.5+0.5*inc*(ang<0?-1:1)/Math.PI};
+}
+
+
+/* ---------- Zustand ---------- */
+const KEY='beissindex:live:v1';
+const state={lat:52.5357,lng:13.1997,place:'Berlin Spandau',species:'zander',date:todayStr()};
+let wx=null;
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,wx}));}catch(_){}}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function dayBounds(str){const [y,m,d]=str.split('-').map(Number);return [new Date(y,m-1,d).getTime(),new Date(y,m-1,d+1).getTime()];}
+const fmt=t=>new Date(t).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+const $=id=>document.getElementById(id);
+
+/* ---------- Fischarten (Richtwerte aus der Fischbiologie) ----------
+   t: Temperatur-Trapez [aktiv ab, optimal ab, optimal bis, aktiv bis] in °C (3-Tage-Mittel Luft als Näherung fürs Wasser)
+   act: Aktivität 0..1 in Dämmerung, am Tag, in der Nacht
+   sky: Punkte tagsüber bei bedecktem bzw. sonnigem Himmel
+   moon: Bonus bei Neu-/Vollmond, 'aal' = Neumond gut, heller Vollmond schlecht */
+const SPECIES={
+  zander:{name:'Zander',t:[6,12,22,27],act:{dusk:1,day:.35,night:.8},sky:{over:8,sun:-5},moon:5,
+    info:'Dämmerungs- und Nachtjäger, lichtempfindlich. Bedeckter Himmel und trübes Wasser helfen.'},
+  hecht:{name:'Hecht',t:[3,8,19,25],act:{dusk:1,day:.7,night:.1},sky:{over:5,sun:0},moon:10,
+    info:'Augenjäger, tagaktiv mit Spitzen in der Dämmerung. Mag kühleres Wasser, im Hochsommer träge. Mondphasen-Effekt in Studien belegt.'},
+  wels:{name:'Wels',t:[12,18,28,32],act:{dusk:.9,day:.2,night:1},sky:{over:8,sun:-5},moon:5,
+    info:'Nachtaktiver Wärmefisch. Unter etwa 12 °C kaum aktiv.'},
+  barsch:{name:'Barsch',t:[5,12,24,28],act:{dusk:.9,day:.8,night:0},sky:{over:3,sun:0},moon:5,
+    info:'Tagaktiver Schwarmräuber. Nachts so gut wie keine Bisse.'},
+  rotauge:{name:'Rotauge',t:[3,10,22,27],act:{dusk:1,day:.7,night:.2},sky:{over:3,sun:0},moon:5,
+    info:'Breiter Temperaturbereich, auch im Winter fangbar. Tagsüber und in der Dämmerung aktiv.'},
+  brasse:{name:'Brasse',t:[8,14,24,28],act:{dusk:1,day:.4,night:.7},sky:{over:5,sun:-3},moon:5,
+    info:'Dämmerungs- und nachtaktiv, tagsüber eher in tieferem Wasser.'},
+  karpfen:{name:'Karpfen',t:[10,17,26,30],act:{dusk:1,day:.5,night:.8},sky:{over:3,sun:0},moon:5,
+    info:'Wärmefisch, ab etwa 10 °C aktiv. Gute Zeiten oft nachts und früh morgens.'},
+  schleie:{name:'Schleie',t:[12,18,26,29],act:{dusk:1,day:.4,night:.4},sky:{over:3,sun:0},moon:5,
+    info:'Wärmefisch mit klarer Spitze in der Morgendämmerung.'},
+  aal:{name:'Aal',t:[12,16,26,30],act:{dusk:.8,day:0,night:1},sky:{over:0,sun:0},moon:'aal',
+    info:'Streng nachtaktiv, braucht warmes Wasser. Dunkle Nächte um Neumond sind besser als heller Vollmond.'},
+  forelle:{name:'Forelle',t:[4,8,16,20],act:{dusk:1,day:.6,night:.1},sky:{over:5,sun:-3},moon:5,
+    info:'Kaltwasserfisch. Über etwa 18 °C kaum noch beißfreudig.'}
+};
+const SP=()=>SPECIES[state.species]||SPECIES.zander;
+
+/* ---------- Wetter (Open-Meteo) ---------- */
+const wxKey=()=>state.lat.toFixed(3)+','+state.lng.toFixed(3);
+async function fetchWx(lat,lng,past,fwd){
+  const u='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+
+    '&hourly=pressure_msl,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,temperature_2m'+
+    '&past_days='+past+'&forecast_days='+fwd+'&timeformat=unixtime&timezone=auto&wind_speed_unit=kmh';
+  const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);
+  const h=(await r.json()).hourly;
+  return {key:(+lat).toFixed(3)+','+(+lng).toFixed(3),fetched:Date.now(),t:h.time.map(x=>x*1000),p:h.pressure_msl,rh:h.relative_humidity_2m,cc:h.cloud_cover,
+    ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m};
+}
+async function loadWeather(force){
+  if(!force&&wx&&wx.key===wxKey()&&Date.now()-wx.fetched<30*60e3)return;
+  $('wxStatus').textContent='Wetterdaten werden geladen …';
+  try{
+    wx=await fetchWx(state.lat,state.lng,3,10);
+    persist();
+  }catch(e){
+    $('wxStatus').textContent=wx&&wx.key===wxKey()?'Aktualisierung fehlgeschlagen, zeige Daten vom '+new Date(wx.fetched).toLocaleString('de-DE')+'.':
+      'Wetterdaten nicht erreichbar. Internetverbindung prüfen und „Aktualisieren“ tippen.';
+    if(!(wx&&wx.key===wxKey()))wx=null;
+    return;
+  }
+}
+function wxAt(t){
+  if(!wx||wx.key!==wxKey())return null;
+  const i=Math.round((t-wx.t[0])/36e5);
+  if(i<3||i>=wx.t.length||wx.p[i]==null||wx.p[i-3]==null)return null;
+  const dt=(i>=24&&wx.tmp[i-24]!=null)?wx.tmp[i]-wx.tmp[i-24]:null;
+  const win=wx.tmp.slice(Math.max(0,i-71),i+1).filter(v=>v!=null),t72=win.length>=24?win.reduce((a,b)=>a+b,0)/win.length:wx.tmp[i];
+  return {dt,t72,p:wx.p[i],dp:wx.p[i]-wx.p[i-3],rh:wx.rh[i],cc:wx.cc[i],ws:wx.ws[i],wg:wx.wg[i],pr:wx.pr[i],tmp:wx.tmp[i]};
+}
+function pressureRate(dp){
+  if(dp>=2)return ['stark steigend',-5]; if(dp>=0.7)return ['leicht steigend',0];
+  if(dp>-0.7)return ['stabil',5]; if(dp>-2)return ['leicht fallend',5]; return ['stark fallend',0];
+}
+function tempRate(w,sp){
+  const v=w.t72,[a,b,c,d]=sp.t;
+  const f=v<=a||v>=d?0:v<b?(v-a)/(b-a):v<=c?1:(d-v)/(d-c);
+  let pts=20*f,lab='Ø 3 Tage '+r1(v)+' °C, '+(f>=0.95?'optimal':f>0?(v<b?'etwas kühl':'etwas warm'):(v<=a?'zu kalt':'zu warm'));
+  if(w.dt!=null){if(w.dt>=2&&v<c){pts+=5;lab+=', wärmer als gestern';}else if(w.dt<=-4){pts-=5;lab+=', Kälteeinbruch';}}
+  return [lab,pts];
+}
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+  h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  return new Date(y,mo-1,da);}
+function pressureDay(t){
+  const d=new Date(t),y=d.getFullYear(),key=(d.getMonth()+1)+'-'+d.getDate();
+  if(['1-1','3-8','5-1','10-3','12-25','12-26'].includes(key))return 'Feiertag';
+  const e=easter(y).getTime(),diff=Math.round((new Date(y,d.getMonth(),d.getDate()).getTime()-e)/dayMs);
+  if([-2,1,39,50].includes(diff))return 'Feiertag';
+  if(d.getDay()===0||d.getDay()===6)return 'Wochenende';
+  return null;
+}
+function skyRate(w,sp,isDay){
+  if(w.ws>35||w.wg>60)return ['Sturm/starker Wind',-10];
+  if(w.pr>4)return ['Starkregen',-5];
+  let pts=0;const lab=[];
+  if(w.pr>=0.1){pts+=3;lab.push('leichter Regen');}
+  if(isDay){if(w.cc>=60){pts+=sp.sky.over;lab.push('bedeckt');}else if(w.cc<30){pts+=sp.sky.sun;lab.push('sonnig');}else lab.push('wechselnd bewölkt');}
+  else lab.push('nachts');
+  if(w.ws>=5&&w.ws<=25){pts+=2;lab.push('leichter Wind');}
+  return [lab.join(', '),pts];
+}
+
+/* ---------- Berechnung ---------- */
+function analyze(){
+  const [ds,de]=dayBounds(state.date),step=5*6e4,from=ds-4*36e5,to=de+4*36e5,ts=[],ma=[],sa=[];
+  for(let t=from;t<=to;t+=step){ts.push(t);ma.push(moonAlt(new Date(t),state.lat,state.lng));sa.push(sunAlt(new Date(t),state.lat,state.lng));}
+  const ev={transit:[],nadir:[],mrise:[],mset:[],srise:[],sset:[]};
+  for(let i=1;i<ts.length-1;i++){if(ma[i]>ma[i-1]&&ma[i]>=ma[i+1])ev.transit.push(ts[i]);if(ma[i]<ma[i-1]&&ma[i]<=ma[i+1])ev.nadir.push(ts[i]);}
+  const cross=(arr,h,up,down)=>{for(let i=1;i<ts.length;i++){const a=arr[i-1]-h,b=arr[i]-h;
+    if(a<0&&b>=0)up.push(ts[i-1]+step*(a/(a-b)));else if(a>=0&&b<0)down.push(ts[i-1]+step*(a/(a-b)));}};
+  cross(ma,0.133,ev.mrise,ev.mset);cross(sa,-0.833,ev.srise,ev.sset);
+  const il=moonIllum(new Date((ds+de)/2)),age=il.phase*29.53;
+  const dNew=Math.min(age,29.53-age),dFull=Math.abs(age-14.765),dMin=Math.min(dNew,dFull);
+  const sp=SP();
+  let phaseBonus,phaseLabel;
+  if(sp.moon==='aal'){phaseBonus=dNew<=3?10:dFull<=3?-5:0;phaseLabel=dNew<=3?'dunkle Nächte um Neumond':dFull<=3?'helle Nächte um Vollmond':'neutral';}
+  else{phaseBonus=dMin<=2?sp.moon:dMin<=4?Math.round(sp.moon/2):0;phaseLabel=dMin.toFixed(1)+' Tage zu Neu-/Vollmond';}
+  const w=(dt,full,zero)=>dt<=full?1:dt>=zero?0:1-(dt-full)/(zero-full);
+  const near=(list,t,full,zero)=>list.reduce((m,T)=>Math.max(m,w(Math.abs(t-T)/6e4,full,zero)),0);
+  function score(t){
+    const major=near(ev.transit.concat(ev.nadir),t,60,120),minor=near(ev.mrise.concat(ev.mset),t,30,75),dusk=near(ev.srise.concat(ev.sset),t,60,150);
+    const isDay=sunAlt(new Date(t),state.lat,state.lng)>0;
+    const timeF=Math.max(dusk*sp.act.dusk,isDay?sp.act.day:sp.act.night);
+    const timeLabel=dusk>.5?'Dämmerung':isDay?'Tag':'Nacht';
+    const W=wxAt(t),pr=W?pressureRate(W.dp):['keine Daten',0],sk=W?skyRate(W,sp,isDay):['keine Daten',0],tp=W?tempRate(W,sp):['keine Daten',0];
+    const busy=pressureDay(t);
+    const parts={base:10,dusk:30*timeF,temp:tp[1],phase:phaseBonus,major:8*major,minor:4*minor,pressure:pr[1],sky:sk[1],busy:busy?-10:0};
+    const total=Math.round(Math.max(0,Math.min(100,Object.values(parts).reduce((a,b)=>a+b,0))));
+    return {total,parts,W,prLabel:pr[0],skyLabel:sk[0],tempLabel:tp[0],busy,timeLabel};
+  }
+  const series=[];for(let t=ds;t<=de;t+=10*6e4)series.push({t,...score(t)});
+  return {ds,de,ev,il,age,dNew,dFull,score,series,phaseLabel};
+}
+function phaseName(p){
+  if(p<.03||p>.97)return 'Neumond';if(p<.22)return 'Zunehmende Sichel';if(p<.28)return 'Erstes Viertel';
+  if(p<.47)return 'Zunehmender Mond';if(p<.53)return 'Vollmond';if(p<.72)return 'Abnehmender Mond';
+  if(p<.78)return 'Letztes Viertel';return 'Abnehmende Sichel';
+}
+function verdict(s){return s>=65?['Sehr gut','var(--good)']:s>=50?['Gut','var(--good)']:s>=35?['Mittel','var(--mid)']:['Schwach','var(--bad)'];}
+const r1=v=>v==null?'–':(Math.round(v*10)/10).toLocaleString('de-DE');
+
+/* ---------- Darstellung ---------- */
+let A=null;
+function render(){
+  A=analyze();
+  const {ds,de,series,ev}=A,now=Date.now(),isToday=now>=ds&&now<de;
+  $('placeLabel').textContent=SP().name+' · '+state.place;
+  if(typeof updateMapPlace==='function')updateMapPlace();
+  $('speciesInfo').textContent=SP().info;
+  const best=series.reduce((a,b)=>b.total>a.total?b:a,series[0]);
+  A.best=best;
+  if(selT!=null&&(selT<ds||selT>=de))selT=null;
+  drawChart(isToday?now:null);
+
+  const thr=Math.max(40,Math.round(best.total*.85)),segs=[];let cur=null;
+  series.forEach(p=>{if(p.total>=thr){if(!cur)cur={a:p.t,b:p.t,peak:p};else{cur.b=p.t;if(p.total>cur.peak.total)cur.peak=p;}}else if(cur){segs.push(cur);cur=null;}});
+  if(cur)segs.push(cur);
+  segs.sort((x,y)=>y.peak.total-x.peak.total);
+  $('windows').innerHTML=segs.slice(0,4).sort((x,y)=>x.a-y.a).map(s=>`<li><span class="t">${fmt(s.a)} – ${fmt(s.b+10*6e4)}</span><span class="p">bis ${s.peak.total}</span></li>`).join('')
+    ||'<li><span class="p">Kein Fenster über 40. Dämmerung bleibt die beste Wahl.</span></li>';
+
+  const rows=[],add=(list,label)=>list.filter(t=>t>=ds&&t<de).forEach(t=>rows.push([t,label]));
+  add(ev.srise,'Sonnenaufgang');add(ev.sset,'Sonnenuntergang');add(ev.mrise,'Mondaufgang');add(ev.mset,'Monduntergang');
+  add(ev.transit,'Mond im Zenit (Major)');add(ev.nadir,'Mond im Nadir (Major)');rows.sort((a,b)=>a[0]-b[0]);
+  $('events').innerHTML=`<tr><td>${phaseName(A.il.phase)}, ${Math.round(A.il.fraction*100)} % beleuchtet</td><td>${A.age.toFixed(1)} Tage</td></tr>`+
+    rows.map(r=>`<tr><td>${r[1]}</td><td>${fmt(r[0])}</td></tr>`).join('');
+
+  renderDetail();
+}
+const dayLabel=t=>new Date(t).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
+function renderDetail(){
+  const {ds,de,best}=A,now=Date.now(),isToday=now>=ds&&now<de;
+  const t=selT!=null?selT:(isToday?now:best.t);
+  const shown={t,...A.score(t)};
+  const label=selT!=null?`${dayLabel(t)}, ${fmt(t)} Uhr`:(isToday?`Jetzt, ${fmt(t)} Uhr`:`${dayLabel(t)}, ${fmt(t)} Uhr (Tagesbestwert)`);
+  const [vt,vc]=verdict(shown.total);
+  $('score').textContent=shown.total;$('score').style.color=vc;$('verdict').textContent=vt;
+  $('scoreSub').textContent=`${label}. Tageshöchstwert ${best.total} um ${fmt(best.t)} Uhr.`;
+  $('nowBtn').hidden=isToday&&selT==null;
+  const g=$('cursor');
+  if(g&&selT!=null){g.style.display='';$('cl').setAttribute('x1',X(t));$('cl').setAttribute('x2',X(t));$('cc').setAttribute('cx',X(t));$('cc').setAttribute('cy',Y(shown.total));}
+  else if(g)g.style.display='none';
+  $('readout').textContent=selT!=null?'Werte unten gelten für '+fmt(t)+' Uhr. „Jetzt“ springt zurück.':'Tippe oder wische in der Kurve, um einen Zeitpunkt zu wählen.';
+  const W=shown.W;
+  $('wxTitle').textContent='Wetter '+(isToday&&selT==null?'jetzt':'um '+fmt(t)+' Uhr');
+  $('wx').innerHTML=W?[
+    ['Luftdruck',r1(W.p)+' hPa'],['Tendenz (3 Std.)',(W.dp>0?'+':'')+r1(W.dp)+' hPa, '+shown.prLabel],
+    ['Luftfeuchtigkeit',Math.round(W.rh)+' %'],['Bewölkung',Math.round(W.cc)+' %'],
+    ['Wind / Böen',Math.round(W.ws)+' / '+Math.round(W.wg)+' km/h'],['Niederschlag',r1(W.pr)+' mm/h'],['Temperatur',r1(W.tmp)+' °C'],['Ø Luft 3 Tage (Näherung Wasser)',r1(W.t72)+' °C']
+  ].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join(''):'';
+  if(wx&&wx.key===wxKey())$('wxStatus').textContent=W?'Open-Meteo, Stand '+new Date(wx.fetched).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' Uhr.':
+    'Für dieses Datum gibt es keine Wetterdaten (Vorhersage reicht etwa 10 Tage). Der Wert enthält nur Mond und Sonne.';
+
+  const p=shown.parts,rr=v=>(v>0?'+':'')+Math.round(v);
+  $('factors').innerHTML=[['Grundwert',rr(p.base)],[`Tageszeit: ${shown.timeLabel}, Aktivität ${SP().name} (max. 30)`,rr(p.dusk)],[`Temperatur: ${shown.tempLabel} (max. 25)`,rr(p.temp)],
+    [`Mondphase: ${A.phaseLabel}`,rr(p.phase)],
+    ['Mond im Zenit/Nadir (max. 8)',rr(p.major)],['Mondauf-/untergang (max. 4)',rr(p.minor)],
+    [`Luftdruck: ${shown.prLabel} (±5)`,rr(p.pressure)],[`Himmel: ${shown.skyLabel}`,rr(p.sky)],
+    [`Angeldruck: ${shown.busy||'Werktag'}`,rr(p.busy)]].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('');
+}
+
+let animated=false,selT=null;
+const W_=600,H_=230,PADL=28,PADR=8,PADT=26,PADB=26;
+const X=t=>PADL+(t-A.ds)/(A.de-A.ds)*(W_-PADL-PADR),Y=v=>PADT+(1-v/100)*(H_-PADT-PADB);
+function drawChart(nowT){
+  const {series,ev,ds,de}=A;let s='';
+  [25,50,75].forEach(v=>{s+=`<line x1="${PADL}" x2="${W_-PADR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${PADL-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;});
+  for(let h=0;h<=24;h+=3){const t=ds+(de-ds)*h/24;s+=`<text x="${X(t)}" y="${H_-6}" text-anchor="middle" font-size="11" fill="var(--muted)">${String(h%24).padStart(2,'0')}</text>`;}
+  const mark=(list,c,lab)=>list.filter(t=>t>=ds&&t<de).forEach(t=>{s+=`<line x1="${X(t)}" x2="${X(t)}" y1="${PADT-8}" y2="${H_-PADB}" stroke="${c}" stroke-width="1.5" stroke-dasharray="3 4" opacity=".8"/><text x="${X(t)}" y="${PADT-12}" text-anchor="middle" font-size="12" font-weight="700" fill="${c}">${lab}</text>`;});
+  mark(ev.srise,'var(--sun)','☀↑');mark(ev.sset,'var(--sun)','☀↓');mark(ev.mrise,'var(--reed)','☾↑');mark(ev.mset,'var(--reed)','☾↓');
+  mark(ev.transit,'var(--bobber)','Z');mark(ev.nadir,'var(--bobber)','N');
+  const pts=series.map(p=>X(p.t).toFixed(1)+','+Y(p.total).toFixed(1));
+  s+=`<path d="M${X(ds)},${Y(0)} L${pts.join(' L')} L${X(de)},${Y(0)} Z" fill="var(--fill)"/><path class="${animated?'':'curve'}" d="M${pts.join(' L')}" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  if(nowT){const n=A.score(nowT).total;s+=`<line x1="${X(nowT)}" x2="${X(nowT)}" y1="${PADT}" y2="${H_-PADB}" stroke="var(--ink)"/><circle cx="${X(nowT)}" cy="${Y(n)}" r="7" fill="var(--bobber)" stroke="var(--card)" stroke-width="2.5"/>`;}
+  s+=`<g id="cursor" style="display:none"><line id="cl" y1="${PADT}" y2="${H_-PADB}" stroke="var(--muted)"/><circle id="cc" r="5" fill="var(--ink)"/></g>`;
+  $('chart').innerHTML=s;animated=true;
+}
+const chart=$('chart');
+function onPoint(e){
+  const r=chart.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W_,f=Math.max(0,Math.min(1,(x-PADL)/(W_-PADL-PADR)));
+  const p=A.series[Math.round(f*(A.series.length-1))];
+  if(selT===p.t)return;selT=p.t;
+  if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;renderDetail();});}
+}
+let pending=false;
+chart.addEventListener('pointerdown',onPoint);
+chart.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'||e.buttons)onPoint(e);});
+
+/* ---------- Ortssuche (eigene Liste + Open-Meteo Geocoding) ---------- */
+const PLACES=[
+ ['Berlin Mitte',52.5200,13.4050],['Berlin Spandau',52.5357,13.1997],['Berlin Charlottenburg',52.5163,13.3041],
+ ['Berlin Wilmersdorf',52.4870,13.3200],['Berlin Friedrichshain',52.5159,13.4544],['Berlin Kreuzberg',52.4986,13.4033],
+ ['Berlin Pankow',52.5693,13.4019],['Berlin Reinickendorf',52.5885,13.3289],['Berlin Tegel',52.5876,13.2873],
+ ['Berlin Steglitz',52.4566,13.3216],['Berlin Zehlendorf',52.4337,13.2597],['Berlin Wannsee',52.4214,13.1640],
+ ['Berlin Tempelhof',52.4664,13.3858],['Berlin Schöneberg',52.4830,13.3530],['Berlin Neukölln',52.4811,13.4354],
+ ['Berlin Treptow',52.4920,13.4732],['Berlin Köpenick',52.4456,13.5743],['Berlin Marzahn',52.5450,13.5640],
+ ['Berlin Hellersdorf',52.5361,13.6040],['Berlin Lichtenberg',52.5155,13.4994],['Berlin Hermsdorf',52.6176,13.3063],
+ ['Berlin Frohnau',52.6330,13.2930],['Berlin Gatow',52.4830,13.1830],['Berlin Kladow',52.4570,13.1430],
+ ['Berlin Grünau',52.4190,13.5740],['Berlin Müggelheim',52.4130,13.6640],['Berlin Rahnsdorf',52.4420,13.6830],
+ ['Tegeler See',52.5800,13.2600],['Großer Wannsee',52.4290,13.1770],['Müggelsee',52.4380,13.6430],
+ ['Havel Spandau',52.5100,13.2000],['Langer See Grünau',52.4180,13.5930],['Dahme Köpenick',52.4400,13.5800],
+ ['Schlachtensee',52.4420,13.2160],['Krumme Lanke',52.4470,13.2350],['Seddinsee',52.3900,13.6900],
+ ['Zeuthener See',52.3530,13.6230],['Scharmützelsee',52.2350,14.0480],['Werbellinsee',52.9500,13.7200],
+ ['Schwielowsee',52.3330,12.9500],['Templiner See',52.3700,13.0300],['Stölpchensee',52.4120,13.1450],
+ ['Potsdam',52.3906,13.0645],['Brandenburg an der Havel',52.4125,12.5316],['Oranienburg',52.7540,13.2370],
+ ['Hamburg',53.5511,9.9937],['München',48.1351,11.5820],['Köln',50.9375,6.9603],['Frankfurt am Main',50.1109,8.6821],
+ ['Stuttgart',48.7758,9.1829],['Düsseldorf',51.2277,6.7735],['Leipzig',51.3397,12.3731],['Dresden',51.0504,13.7373],
+ ['Hannover',52.3759,9.7320],['Bremen',53.0793,8.8017],['Rostock',54.0924,12.0991],['Kiel',54.3233,10.1228],
+ ['Schwerin',53.6355,11.4012],['Müritz Waren',53.5190,12.6800],['Magdeburg',52.1205,11.6276],['Nürnberg',49.4521,11.0767]
+];
+const norm=s=>s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+function localHits(q){const ws=norm(q).split(' ').filter(Boolean);if(!ws.length)return [];return PLACES.filter(p=>{const n=norm(p[0]);return ws.every(w=>n.includes(w));}).map(p=>({name:p[0],lat:p[1],lng:p[2],src:''}));}
+async function geocode(q){
+  const words=q.split(/[\s,]+/).filter(Boolean),tries=[...new Set([q,words[words.length-1],words[0]])];
+  for(const t of tries){
+    try{
+      const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(t)+'&count=8&language=de&format=json');
+      const j=await r.json();if(!j.results||!j.results.length)continue;
+      const nq=norm(q).split(' ');
+      return j.results.map(x=>{const parts=[x.name,x.admin3,x.admin2,x.admin1,x.country_code!=='DE'?x.country:''].filter(Boolean);
+        const name=[...new Set(parts)].join(', ');return {name,lat:x.latitude,lng:x.longitude,src:'',m:nq.filter(w=>norm(name).includes(w)).length};})
+        .sort((a,b)=>b.m-a.m);
+    }catch(_){return null;}
+  }
+  return [];
+}
+const qEl=$('placeQuery'),hitsEl=$('hits'),msg=$('locMsg');
+async function setPlace(name,lat,lng){
+  if(map)map._userMoved=false;
+  state.place=name;state.lat=+(+lat).toFixed(4);state.lng=+(+lng).toFixed(4);persist();
+  hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();render();await loadWeather(true);render();
+}
+function showHits(list){
+  hitsEl.innerHTML=list.slice(0,6).map((p,i)=>`<li><button type="button" data-i="${i}">${p.name}<small>${(+p.lat).toFixed(3)}, ${(+p.lng).toFixed(3)}</small></button></li>`).join('');
+  hitsEl.onclick=e=>{const b=e.target.closest('button');if(!b)return;const p=list[+b.dataset.i];setPlace(p.name,p.lat,p.lng);};
+}
+async function findPlace(){
+  const q=qEl.value.trim();if(!q){msg.textContent='Ort eingeben, z. B. Berlin Spandau.';return;}
+  const m=q.match(/^\s*(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)\s*$/);
+  if(m){const la=+m[1].replace(',','.'),lo=+m[2].replace(',','.');if(Math.abs(la)<=90&&Math.abs(lo)<=180){setPlace(la.toFixed(3)+', '+lo.toFixed(3),la,lo);return;}}
+  msg.textContent='Suche …';
+  const loc=localHits(q),api=await geocode(q);
+  const all=loc.concat(api||[]);
+  if(!all.length){msg.textContent=api===null?'Ortssuche nicht erreichbar. Internetverbindung prüfen.':'Ort nicht gefunden. Anders schreiben oder Koordinaten eingeben, z. B. 52.53, 13.20.';return;}
+  if(all.length===1){setPlace(all[0].name,all[0].lat,all[0].lng);return;}
+  showHits(all);msg.textContent='Bitte auswählen.';
+}
+$('findPlace').onclick=findPlace;
+qEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();findPlace();}});
+$('geo').onclick=()=>{
+  if(!navigator.geolocation){msg.textContent='Standortabfrage wird hier nicht unterstützt.';return;}
+  msg.textContent='Standort wird abgefragt …';
+  navigator.geolocation.getCurrentPosition(p=>setPlace('Aktueller Standort',p.coords.latitude,p.coords.longitude),
+    ()=>{msg.textContent='Standort nicht freigegeben. Ort suchen oder Koordinaten eingeben.';},{timeout:10000});
+};
+$('refresh').onclick=async()=>{await loadWeather(true);render();};
+function speciesChips(){
+  const el=$('species');
+  el.innerHTML=Object.entries(SPECIES).map(([k,v])=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${v.name}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;state.species=b.dataset.v;persist();speciesChips();render();};
+}
+speciesChips();
+const dateEl=$('date');dateEl.value=state.date;
+let datePicked=false;
+dateEl.addEventListener('change',()=>{if(dateEl.value){state.date=dateEl.value;datePicked=state.date!==todayStr();selT=null;render();}});
+function goNow(){state.date=todayStr();dateEl.value=state.date;datePicked=false;selT=null;render();loadWeather(false).then(render);}
+$('nowBtn').onclick=goNow;
+function syncDay(){if(!datePicked&&state.date!==todayStr())goNow();else if(state.date===todayStr())loadWeather(false).then(render);}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncDay();});
+window.addEventListener('pageshow',syncDay);
+
+
+/* ---------- Karte (Leaflet + OpenStreetMap) ---------- */
+let map=null,placeMarker=null,catchLayer=null,clickPopup=null;
+const RES_COLOR={fang:'#2f9e5a',biss:'#e0a020',null:'#8a9699'};
+function initMap(){
+  if(typeof L==='undefined'){$('mapNote').textContent='Karte konnte nicht geladen werden (keine Internetverbindung?). Beim nächsten Öffnen mit Netz erscheint sie.';$('map').style.display='none';$('mapFit').hidden=true;return;}
+  map=L.map('map',{zoomControl:true,attributionControl:true}).setView([state.lat,state.lng],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
+  catchLayer=L.layerGroup().addTo(map);
+  map.on('click',e=>{
+    const {lat,lng}=e.latlng;
+    clickPopup=L.popup().setLatLng(e.latlng).setContent(
+      `<b>${lat.toFixed(4)}, ${lng.toFixed(4)}</b>
+       <button type="button" class="pbtn" data-mapact="place" data-lat="${lat}" data-lng="${lng}">Hier Standort setzen</button>
+       <button type="button" class="pbtn alt" data-mapact="catch" data-lat="${lat}" data-lng="${lng}">Als Fangposition übernehmen</button>`).openOn(map);
+  });
+  $('map').addEventListener('click',e=>{
+    const b=e.target.closest('[data-mapact]');if(!b)return;
+    e.stopPropagation();
+    const lat=+b.dataset.lat,lng=+b.dataset.lng,act=b.dataset.mapact;
+    if(act==='place'){map.closePopup();setPlace('Kartenpunkt '+lat.toFixed(3)+', '+lng.toFixed(3),lat,lng);}
+    else if(act==='catch'){map.closePopup();fPos={lat,lng,src:'Karte'};showPos();$('fMsg').textContent='Fangposition aus der Karte übernommen.';$('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});}
+    else if(act==='edit'){map.closePopup();startEdit(b.dataset.id);}
+  });
+  setTimeout(()=>map.invalidateSize(),300);
+}
+function updateMapPlace(){
+  if(!map)return;
+  const ll=[state.lat,state.lng];
+  if(!placeMarker)placeMarker=L.circleMarker(ll,{radius:9,color:'#fff',weight:3,fillColor:'#d7362b',fillOpacity:1}).addTo(map);
+  else placeMarker.setLatLng(ll);
+  placeMarker.bindTooltip(state.place);
+  if(!map._userMoved)map.setView(ll,map.getZoom());
+}
+function updateMapCatches(){
+  if(!map||!catchLayer)return;
+  catchLayer.clearLayers();
+  catches.forEach(c=>{
+    if(!isFinite(c.lat)||!isFinite(c.lng))return;
+    const size=[c.weight!=null?n1(c.weight)+' kg':'',c.length!=null?n1(c.length)+' cm':''].filter(Boolean).join(', ');
+    const title=c.result==='fang'?c.species:(c.result==='biss'?'Biss ohne Fang':'Nullnummer')+' ('+c.species+')';
+    L.circleMarker([c.lat,c.lng],{radius:7,color:'#fff',weight:2,fillColor:RES_COLOR[c.result]||'#8a9699',fillOpacity:.95})
+      .bindPopup(`<b>${esc(title)}</b>${size?'<br>'+esc(size):''}<br>${new Date(c.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}${c.place?'<br>'+esc(c.place):''}${c.index!=null?'<br>Index '+c.index:''}${c.bait?'<br>'+esc(c.bait):''}
+        <button type="button" class="pbtn alt" data-mapact="edit" data-id="${c.id}">Bearbeiten</button>`)
+      .addTo(catchLayer);
+  });
+}
+$('mapFit').onclick=()=>{
+  if(!map)return;
+  const pts=catches.filter(c=>isFinite(c.lat)&&isFinite(c.lng)).map(c=>[c.lat,c.lng]);
+  if(!pts.length){$('mapNote').textContent='Noch keine Fänge mit Position.';return;}
+  pts.push([state.lat,state.lng]);
+  map.fitBounds(pts,{padding:[30,30],maxZoom:15});
+};
+initMap();
+if(map)map.on('dragstart zoomstart',()=>{map._userMoved=true;});
+
+/* ---------- Fangbuch ---------- */
+const CKEY='beissindex:catches:v1';
+let catches=[];
+try{catches=JSON.parse(localStorage.getItem(CKEY)||'[]');}catch(_){catches=[];}
+function saveCatches(){try{localStorage.setItem(CKEY,JSON.stringify(catches));return true;}catch(_){return false;}}
+const fEl=id=>$(id);
+let fPos={lat:state.lat,lng:state.lng,src:'Suchort'};
+function localInput(t){const d=new Date(t-new Date(t).getTimezoneOffset()*6e4);return d.toISOString().slice(0,16);}
+function syncFormPlace(){fPos={lat:state.lat,lng:state.lng,src:'Suchort'};fEl('fPlace').value=state.place;showPos();}
+function showPos(){fEl('fPos').textContent=`${fPos.lat.toFixed(5)}, ${fPos.lng.toFixed(5)} (${fPos.src})`;}
+function initForm(){
+  fEl('fSpecies').innerHTML=Object.entries(SPECIES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')+'<option value="andere">Andere …</option>';
+  fEl('fSpecies').value=state.species;
+  fEl('fSpecies').onchange=()=>{fEl('fOtherWrap').hidden=fEl('fSpecies').value!=='andere';};
+  fEl('fTime').value=localInput(Date.now());
+  syncFormPlace();
+}
+fEl('fGps').onclick=()=>{
+  if(!navigator.geolocation){fEl('fMsg').textContent='GPS wird hier nicht unterstützt.';return;}
+  fEl('fMsg').textContent='GPS-Position wird abgefragt …';
+  navigator.geolocation.getCurrentPosition(p=>{fPos={lat:p.coords.latitude,lng:p.coords.longitude,src:'GPS ±'+Math.round(p.coords.accuracy)+' m'};showPos();fEl('fMsg').textContent='';},
+    ()=>{fEl('fMsg').textContent='GPS nicht freigegeben. Es wird der Suchort verwendet.';},{enableHighAccuracy:true,timeout:15000});
+};
+function withContext(ctx,fn){
+  const saved={lat:state.lat,lng:state.lng,species:state.species,date:state.date},sw=wx;
+  Object.assign(state,ctx.state);wx=ctx.wx;
+  try{return fn();}finally{Object.assign(state,saved);wx=sw;}
+}
+const dstr=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+let editingId=null;
+fEl('fSave').onclick=async()=>{
+  const m=fEl('fMsg'),t=new Date(fEl('fTime').value).getTime();
+  if(!isFinite(t)){m.textContent='Datum und Uhrzeit fehlen.';return;}
+  if(t>Date.now()+36e5){m.textContent='Der Zeitpunkt liegt in der Zukunft.';return;}
+  if(t<Date.now()-90*dayMs)m.textContent='Älter als 3 Monate: Wetterdaten sind dafür nicht verfügbar, Mond und Sonne schon.';
+  const spKey=fEl('fSpecies').value,spName=spKey==='andere'?(fEl('fOther').value.trim()||'Andere'):SPECIES[spKey].name;
+  const num=id=>{const v=parseFloat(String(fEl(id).value).replace(',','.'));return isFinite(v)?v:null;};
+  fEl('fSave').disabled=true;m.textContent='Wetter und Mond werden ergänzt …';
+  let data=null;const key=fPos.lat.toFixed(3)+','+fPos.lng.toFixed(3);
+  if(wx&&wx.key===key&&t>=wx.t[3]&&t<=wx.t[wx.t.length-1])data=wx;
+  else if(t>=Date.now()-91*dayMs){try{data=await fetchWx(fPos.lat,fPos.lng,92,1);}catch(_){data=null;}}
+  const snap=withContext({state:{lat:fPos.lat,lng:fPos.lng,species:SPECIES[spKey]?spKey:state.species,date:dstr(t)},wx:data},()=>{
+    const a=analyze(),s=a.score(t);
+    return {index:SPECIES[spKey]?s.total:null,time:s.timeLabel,moon:phaseName(a.il.phase),illum:Math.round(a.il.fraction*100),W:s.W,prLabel:s.prLabel};
+  });
+  const W=snap.W;
+  const e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t,result:fEl('fResult').value,species:spName,speciesKey:spKey,
+    weight:num('fWeight'),length:num('fLength'),place:fEl('fPlace').value.trim(),lat:+fPos.lat.toFixed(5),lng:+fPos.lng.toFixed(5),
+    bait:fEl('fBait').value.trim(),depth:num('fDepth'),note:fEl('fNote').value.trim(),index:snap.index,daytime:snap.time,moon:snap.moon,illum:snap.illum,
+    wx:W?wxRecord(W,snap.prLabel):null};
+  if(editingId){
+    const old=catches.find(c=>c.id===editingId);
+    e.id=editingId;
+    if(old&&!e.wx&&old.wx&&old.t===e.t&&old.lat===e.lat&&old.lng===e.lng)e.wx=old.wx;
+    catches=catches.map(c=>c.id===editingId?e:c);
+  }else catches.push(e);
+  catches.sort((a,b)=>b.t-a.t);
+  const wasEdit=!!editingId;endEdit();
+  fEl('fSave').disabled=false;
+  if(!saveCatches()){m.textContent='Speichern im Browser fehlgeschlagen. Bitte Sicherung exportieren.';}
+  else m.textContent=(wasEdit?'Änderung gespeichert':'Gespeichert')+(e.wx?', inklusive Wetter.':(navigator.onLine?'. Wetterdaten waren nicht verfügbar.':'. Kein Netz: Das Wetter wird automatisch nachgeladen, sobald wieder Empfang da ist.'));
+  renderCatches();
+};
+function wxRecord(W,trend){return {p:+W.p.toFixed(1),dp:+W.dp.toFixed(1),trend,tmp:+W.tmp.toFixed(1),t72:+W.t72.toFixed(1),rh:Math.round(W.rh),cc:Math.round(W.cc),ws:Math.round(W.ws),wg:Math.round(W.wg),pr:+W.pr.toFixed(1)};}
+let backfilling=false;
+async function backfillWeather(){
+  if(backfilling||!navigator.onLine)return;
+  const todo=catches.filter(c=>!c.wx&&c.t>=Date.now()-91*dayMs&&c.t<=Date.now()&&isFinite(c.lat)&&isFinite(c.lng));
+  if(!todo.length)return;
+  backfilling=true;let n=0;
+  try{
+    for(const c of todo){
+      let data;try{data=await fetchWx(c.lat,c.lng,92,1);}catch(_){break;}
+      const snap=withContext({state:{lat:c.lat,lng:c.lng,species:SPECIES[c.speciesKey]?c.speciesKey:state.species,date:dstr(c.t)},wx:data},()=>{
+        const a=analyze(),s=a.score(c.t);return {index:SPECIES[c.speciesKey]?s.total:null,W:s.W,prLabel:s.prLabel,time:s.timeLabel};});
+      if(snap.W){c.wx=wxRecord(snap.W,snap.prLabel);c.index=snap.index;c.daytime=snap.time;n++;}
+    }
+  }finally{backfilling=false;}
+  if(n){saveCatches();renderCatches();fEl('fMsg').textContent=`Wetter für ${n} ${n===1?'Eintrag':'Einträge'} nachgeladen.`;}
+}
+window.addEventListener('online',backfillWeather);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)backfillWeather();});
+const n1=v=>v==null?'':(Math.round(v*100)/100).toLocaleString('de-DE',{useGrouping:false});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderCatches(){
+  updateMapCatches();
+  const res={fang:'Fang',biss:'Biss ohne Fang',null:'Nullnummer'};
+  fEl('catchList').innerHTML=catches.map(c=>{
+    const size=[c.weight!=null?n1(c.weight)+' kg':'',c.length!=null?n1(c.length)+' cm':''].filter(Boolean).join(' · ');
+    const w=c.wx?`${n1(c.wx.p)} hPa ${c.wx.trend} · ${n1(c.wx.tmp)} °C · Wind ${c.wx.ws} km/h · Wolken ${c.wx.cc} % · Feuchte ${c.wx.rh} %`:'keine Wetterdaten';
+    return `<li><div class="h"><span>${esc(c.result==='fang'?c.species:res[c.result]+' ('+c.species+')')}</span><span>${esc(size)}</span></div>
+      <div class="d">${new Date(c.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${esc(c.place||'ohne Ortsangabe')}</div>
+      <div class="d">${c.index!=null?'Index '+c.index+' · ':''}${esc(c.daytime)} · ${esc(c.moon)} ${c.illum} %</div>
+      <div class="d">${w}</div>
+      ${c.bait||c.depth!=null||c.note?`<div class="d">${esc([c.bait,c.depth!=null?n1(c.depth)+' m Tiefe':'',c.note].filter(Boolean).join(' · '))}</div>`:''}
+      <div class="a"><a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" rel="noopener">Karte</a><button type="button" data-edit="${c.id}">Bearbeiten</button><button type="button" data-del="${c.id}">${pendingDel===c.id?'Wirklich löschen?':'Löschen'}</button></div></li>`;
+  }).join('');
+  const f=catches.filter(c=>c.result==='fang'),z=catches.filter(c=>c.result==='null'),b=catches.filter(c=>c.result==='biss');
+  const avg=a=>{const v=a.map(c=>c.index).filter(x=>x!=null);return v.length?Math.round(v.reduce((x,y)=>x+y,0)/v.length):null;};
+  fEl('fStats').innerHTML=catches.length?`<b>${f.length}</b> Fänge, <b>${b.length}</b> Bisse ohne Fang, <b>${z.length}</b> Nullnummern.`+
+    (avg(f)!=null&&avg(z)!=null?` Ø Index bei Fängen ${avg(f)}, bei Nullnummern ${avg(z)}.`:'')+
+    (catches.length<30?' Aussagekräftig wird der Vergleich ab etwa 30 Einträgen.':'')+
+    (()=>{let lb=0;try{lb=+localStorage.getItem('beissindex:lastBackup')||0;}catch(_){}return catches.length-lb>=10?' <b>Seit der letzten Sicherung sind '+(catches.length-lb)+' neue Einträge dazugekommen. Tipp unten auf „Sicherung speichern“.</b>':'';})():'Noch keine Einträge. Trag auch Nullnummern ein, sonst lässt sich der Index später nicht prüfen.';
+}
+let pendingDel=null,pendingTimer=null;
+fEl('catchList').onclick=e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.del){
+    const id=b.dataset.del;
+    if(pendingDel===id){clearTimeout(pendingTimer);pendingDel=null;catches=catches.filter(c=>c.id!==id);
+      if(editingId===id)endEdit();saveCatches();renderCatches();fEl('fMsg').textContent='Eintrag gelöscht.';return;}
+    pendingDel=id;renderCatches();clearTimeout(pendingTimer);
+    pendingTimer=setTimeout(()=>{pendingDel=null;renderCatches();},4000);
+    return;
+  }
+  if(b.dataset.edit)startEdit(b.dataset.edit);
+};
+function startEdit(id){
+  const c=catches.find(x=>x.id===id);if(!c)return;
+  editingId=id;
+  fEl('fResult').value=c.result;
+  if(SPECIES[c.speciesKey]){fEl('fSpecies').value=c.speciesKey;fEl('fOtherWrap').hidden=true;}
+  else{fEl('fSpecies').value='andere';fEl('fOtherWrap').hidden=false;fEl('fOther').value=c.species;}
+  fEl('fTime').value=localInput(c.t);
+  const s=v=>v==null?'':String(v).replace('.',',');
+  fEl('fWeight').value=s(c.weight);fEl('fLength').value=s(c.length);fEl('fDepth').value=s(c.depth);
+  fEl('fPlace').value=c.place||'';fEl('fBait').value=c.bait||'';fEl('fNote').value=c.note||'';
+  fPos={lat:c.lat,lng:c.lng,src:'gespeicherte Position'};showPos();
+  fEl('fSave').textContent='Änderungen speichern';fEl('fCancel').hidden=false;fEl('fTitle').textContent='Fangbuch: Eintrag bearbeiten';
+  fEl('fMsg').textContent='';
+  fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function endEdit(){
+  editingId=null;
+  fEl('fSave').textContent='Eintrag speichern';fEl('fCancel').hidden=true;fEl('fTitle').textContent='Fangbuch';
+  ['fWeight','fLength','fBait','fDepth','fNote','fOther'].forEach(id=>fEl(id).value='');
+  fEl('fResult').value='fang';fEl('fSpecies').value=state.species;fEl('fOtherWrap').hidden=true;
+  fEl('fTime').value=localInput(Date.now());syncFormPlace();
+}
+fEl('fCancel').onclick=()=>{endEdit();fEl('fMsg').textContent='Bearbeiten abgebrochen.';};
+function download(name,content,type){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+fEl('fCsv').onclick=()=>{
+  if(!catches.length){fEl('fMsg').textContent='Keine Einträge zum Exportieren.';return;}
+  const head=['Datum','Uhrzeit','Ergebnis','Fischart','Gewicht kg','Länge cm','Gewässer','Breite','Länge','Köder','Tiefe m','Notiz','Beißindex','Tageszeit','Mondphase','Mond %','Luftdruck hPa','Drucktendenz 3h','Temperatur °C','Ø Temp 3 Tage','Feuchte %','Wolken %','Wind km/h','Böen km/h','Niederschlag mm'];
+  const c=v=>{if(v==null)return '';const s=typeof v==='number'?String(v).replace('.',','):String(v);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const rows=catches.map(e=>{const d=new Date(e.t),w=e.wx||{};return [d.toLocaleDateString('de-DE'),d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),
+    e.result,e.species,e.weight,e.length,e.place,e.lat,e.lng,e.bait,e.depth,e.note,e.index,e.daytime,e.moon,e.illum,w.p,w.dp,w.tmp,w.t72,w.rh,w.cc,w.ws,w.wg,w.pr].map(c).join(';');});
+  download('fangbuch.csv','\ufeff'+head.join(';')+'\n'+rows.join('\n'),'text/csv;charset=utf-8');
+};
+fEl('fBackup').onclick=()=>{try{localStorage.setItem('beissindex:lastBackup',String(catches.length));}catch(_){}renderCatches();download('fangbuch-sicherung-'+dstr(Date.now())+'.json',JSON.stringify({version:1,catches},null,1),'application/json');};
+fEl('fImport').onchange=async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{const d=JSON.parse(await file.text()),list=Array.isArray(d)?d:d.catches;if(!Array.isArray(list))throw 0;
+    const ids=new Set(catches.map(c=>c.id));let n=0;list.forEach(c=>{if(c&&c.id&&isFinite(c.t)&&!ids.has(c.id)){catches.push(c);n++;}});
+    catches.sort((a,b)=>b.t-a.t);saveCatches();renderCatches();fEl('fMsg').textContent=n+' Einträge geladen.';}
+  catch(_){fEl('fMsg').textContent='Datei konnte nicht gelesen werden.';}
+  e.target.value='';
+};
+initForm();renderCatches();
+
+(function(){
+  const standalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+  let dismissed=false;try{dismissed=localStorage.getItem('beissindex:installHint')==='1';}catch(_){}
+  const ua=navigator.userAgent,isIOS=/iPhone|iPad|iPod/.test(ua)||(ua.includes('Mac')&&'ontouchend' in document),isAndroid=/Android/.test(ua);
+  $('installText').textContent=isIOS?'In Safari auf „Teilen“ und dann „Zum Home-Bildschirm“ tippen. Nur so bleibt dein Fangbuch dauerhaft gespeichert, Safari löscht sonst Daten von Webseiten nach 7 Tagen ohne Nutzung.'
+    :isAndroid?'In Chrome oben rechts auf das Menü ⋮ und dann „App installieren“ oder „Zum Startbildschirm hinzufügen“ tippen. Dann startet der Beißindex wie eine normale App, auch offline.'
+    :'Im Browser-Menü „App installieren“ wählen, dann startet der Beißindex wie eine eigene App.';
+  if(!standalone&&!dismissed)$('installHint').hidden=false;
+  let deferred=null;
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;if(!standalone){$('installHint').hidden=false;$('installBtn').hidden=false;}});
+  $('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();try{await deferred.userChoice;}catch(_){}deferred=null;$('installBtn').hidden=true;$('installHint').hidden=true;};
+  window.addEventListener('appinstalled',()=>{$('installHint').hidden=true;});
+  $('installClose').onclick=()=>{$('installHint').hidden=true;try{localStorage.setItem('beissindex:installHint','1');}catch(_){}};
+  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+render();
+loadWeather(false).then(render);
+backfillWeather();
+setInterval(async()=>{if(!datePicked&&state.date!==todayStr()){goNow();return;}if(state.date===todayStr()){await loadWeather(false);render();}},5*60*1000);
+</script>
+</body>
+</html>
