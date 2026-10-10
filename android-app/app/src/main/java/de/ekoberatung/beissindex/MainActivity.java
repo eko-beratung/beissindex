@@ -63,12 +63,24 @@ public class MainActivity extends Activity {
             }
             @Override public void onPageFinished(WebView view,String url) {
                 if(isSite(Uri.parse(url))) view.evaluateJavascript(
-                    "(function(){window.download=function(name,content,type){AndroidDownloads.saveFile(String(name),String(content),String(type));};})();",null);
+                    "(function(){if(window.__beissAndroidExport)return;window.__beissAndroidExport=true;" +
+                    "var create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL),items=new Map();" +
+                    "URL.createObjectURL=function(blob){var url=create(blob);items.set(url,blob);return url;};" +
+                    "URL.revokeObjectURL=function(url){items.delete(url);return revoke(url);};" +
+                    "var click=HTMLAnchorElement.prototype.click;" +
+                    "HTMLAnchorElement.prototype.click=function(){var blob=items.get(this.href);" +
+                    "if(this.download&&blob){var name=this.download;blob.text().then(function(t){AndroidDownloads.saveFile(name,t,blob.type);});return;}" +
+                    "return click.call(this);};})();",null);
             }
         });
         browser.setWebChromeClient(new WebChromeClient() {
             @Override public void onGeolocationPermissionsShowPrompt(String origin,GeolocationPermissions.Callback callback) {
-                if(!isSite(Uri.parse(origin))) {callback.invoke(origin,false,false);return;}
+                Uri originUri = Uri.parse(origin);
+                if(!"https".equalsIgnoreCase(originUri.getScheme()) ||
+                   !"eko-beratung.github.io".equalsIgnoreCase(originUri.getHost()) ||
+                   browser.getUrl()==null || !isSite(Uri.parse(browser.getUrl()))) {
+                    callback.invoke(origin,false,false);return;
+                }
                 if(hasLocation()){callback.invoke(origin,true,true);}
                 else {
                     locationOrigin=origin;locationCallback=callback;
