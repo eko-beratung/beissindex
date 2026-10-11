@@ -663,29 +663,59 @@ async function loadWeather(force){
   return wxLoading;
 }
 window.addEventListener('online',()=>loadWeather(true).then(render));
+let wxHist=null,histLoading=null;
+const coversT=(D,t)=>D&&D.key===wxKey()&&D.t&&D.t.length>3&&t>=D.t[3]&&t<=D.t[D.t.length-1];
+function pickWx(t){return coversT(wx,t)?wx:(coversT(wxHist,t)?wxHist:null);}
+async function fetchArchive(lat,lng,fromMs,toMs){
+  // Rückblick: Historische Wetterdaten (Open-Meteo Archiv, Reanalyse), etwa ab 5 Tage zurück verfügbar
+  const u='https://archive-api.open-meteo.com/v1/archive?latitude='+G2(lat)+'&longitude='+G2(lng)+'&start_date='+dstr(fromMs)+'&end_date='+dstr(toMs)+
+    '&hourly=pressure_msl,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,temperature_2m&timeformat=unixtime&timezone=auto&wind_speed_unit=kmh';
+  const ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=ctl?setTimeout(()=>ctl.abort(),25000):null;
+  let r;try{r=await fetch(u,{cache:'no-store',signal:ctl?ctl.signal:undefined});}catch(e){throw new Error('keine Verbindung');}finally{if(tm)clearTimeout(tm);}
+  if(!r.ok)throw new Error('Archiv antwortet mit Fehler '+r.status);
+  const h=(await r.json()).hourly;if(!h||!h.time||!h.time.length)throw new Error('leere Antwort');
+  return {key:(+lat).toFixed(3)+','+(+lng).toFixed(3),fetched:Date.now(),archive:true,t:h.time.map(x=>x*1000),p:h.pressure_msl,rh:h.relative_humidity_2m,cc:h.cloud_cover,
+    ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m,sst:null};
+}
+async function wxForTime(lat,lng,t,sea){
+  // Bis ca. 3 Monate zurück: Vorhersage-API mit Vergangenheit, davor: Archiv
+  if(t>=Date.now()-88*dayMs)return fetchWx(lat,lng,pastDaysFor(t),1,sea);
+  return fetchArchive(lat,lng,t-31*dayMs,t+dayMs);
+}
+async function ensureHist(){
+  const [ds,de]=dayBounds(state.date);
+  if(de>Date.now()+dayMs)return;            // Zukunft: Vorhersage genügt
+  if(ds>=Date.now()-28*dayMs)return;         // letzte 4 Wochen: kommen mit der normalen Vorhersage
+  if(coversT(wx,ds+36e5)&&coversT(wx,de-36e5))return;
+  if(coversT(wxHist,ds+36e5)&&coversT(wxHist,de-36e5))return;
+  const job=wxKey()+'|'+state.date;if(histLoading===job)return;histLoading=job;
+  try{const d=await fetchArchive(state.lat,state.lng,ds-31*dayMs,Math.min(de,Date.now()));if(histLoading===job&&d.key===wxKey()){wxHist=d;render();}}
+  catch(e){wxErr='Rückblick: '+((e&&e.message)||'Fehler');render();}
+  finally{if(histLoading===job)histLoading=null;}
+}
 function wxAt(t){
-  if(!wx||wx.key!==wxKey())return null;
-  const i=Math.round((t-wx.t[0])/36e5);
-  if(i<3||i>=wx.t.length||wx.p[i]==null||wx.p[i-3]==null)return null;
-  const dt=(i>=24&&wx.tmp[i-24]!=null)?wx.tmp[i]-wx.tmp[i-24]:null;
-  if(!wx._wt||wx._wt.length!==wx.tmp.length){
+  const D=pickWx(t);if(!D)return null;
+  const i=Math.round((t-D.t[0])/36e5);
+  if(i<3||i>=D.t.length||D.p[i]==null||D.p[i-3]==null)return null;
+  const dt=(i>=24&&D.tmp[i-24]!=null)?D.tmp[i]-D.tmp[i-24]:null;
+  if(!D._wt||D._wt.length!==D.tmp.length){
     // Wasser reagiert träge: exponentiell gewichteter Mittelwert der Lufttemperatur, Zeitkonstante 10 Tage
-    const tau=240,arr=new Array(wx.tmp.length);let est=null,n0=0,s0=0;
-    for(let k=0;k<wx.tmp.length;k++){const v=wx.tmp[k];if(v==null){arr[k]=est;continue;}
+    const tau=240,arr=new Array(D.tmp.length);let est=null,n0=0,s0=0;
+    for(let k=0;k<D.tmp.length;k++){const v=D.tmp[k];if(v==null){arr[k]=est;continue;}
       if(est==null){s0+=v;n0++;if(n0>=24){est=s0/n0;}arr[k]=n0>=24?est:null;continue;}
       est+=(v-est)/tau;arr[k]=est;}
-    wx._wt=arr;
+    D._wt=arr;
   }
   const histH=i; // Stunden Vorlauf vor dem Zeitpunkt
-  let t72=wx._wt[i]!=null?Math.max(0,wx._wt[i]):wx.tmp[i];
+  let t72=D._wt[i]!=null?Math.max(0,D._wt[i]):D.tmp[i];
   let wsrc=histH>=24*14?'est':'short';
   const mw=manualWater();
   const pg=pegelFor(t);
   if(mw&&Math.abs(t-mw.t)<=3*dayMs){t72=mw.v;wsrc='manual';}
   else if(pg){t72=pg.value;wsrc='pegel';}
-  const sstv=wx.sst&&wx.sst[i]!=null?wx.sst[i]:null;
+  const sstv=D.sst&&D.sst[i]!=null?D.sst[i]:null;
   const fixed=wsrc==='manual'||wsrc==='pegel';
-  return {dt:sstv!=null||fixed?null:dt,t72:fixed?t72:(sstv!=null?sstv:t72),sst:fixed?null:sstv,wsrc,p:wx.p[i],dp:wx.p[i]-wx.p[i-3],rh:wx.rh[i],cc:wx.cc[i],ws:wx.ws[i],wg:wx.wg[i],pr:wx.pr[i],tmp:wx.tmp[i]};
+  return {dt:sstv!=null||fixed?null:dt,t72:fixed?t72:(sstv!=null?sstv:t72),sst:fixed?null:sstv,wsrc,p:D.p[i],dp:D.p[i]-D.p[i-3],rh:D.rh[i],cc:D.cc[i],ws:D.ws[i],wg:D.wg[i],pr:D.pr[i],tmp:D.tmp[i]};
 }
 function pressureRate(dp){
   if(dp>=2)return ['stark steigend',-5]; if(dp>=0.7)return ['leicht steigend',0];
@@ -808,13 +838,14 @@ function render(){
   renderWeek();
   renderSunMoon();
   renderDetail();
+  ensureHist();
 }
 function renderWeek(){
   const out=[],today=dayBounds(todayStr())[0];let anyWx=false;
-  for(let d=0;d<10;d++){
+  for(let d=-3;d<10;d++){
     const ds=dayBounds(dstr(today+d*dayMs+12*36e5))[0],date=dstr(ds+12*36e5);
     const r=withContext({state:{lat:state.lat,lng:state.lng,species:state.species,date},wx},()=>{
-      const a=analyze(),now=Date.now(),pts=a.series.filter(p=>p.t<a.de&&(d>0||p.t>=now-30*6e4));
+      const a=analyze(),now=Date.now(),pts=a.series.filter(p=>p.t<a.de&&(d!==0||p.t>=now-30*6e4));
       if(!pts.length)return null;
       const best=pts.reduce((x,y)=>y.total>x.total?y:x,pts[0]);
       let s=best.t,e=best.t;const thr=best.total*0.9;
@@ -895,7 +926,8 @@ function renderCards(shown,t,isToday,bl){
   $('wxIcon').innerHTML=ic.svg;$('wxCond').textContent=ic.txt;
   $('wxTemp').textContent=W?Math.round(W.tmp)+'°':'–';
   let mm='';
-  if(wx&&wx.key===wxKey()){const v=[];for(let k=0;k<wx.t.length;k++)if(wx.t[k]>=A.ds&&wx.t[k]<A.de&&wx.tmp[k]!=null)v.push(wx.tmp[k]);
+  const DD=pickWx(A.ds+12*36e5);
+  if(DD){const v=[];for(let k=0;k<DD.t.length;k++)if(DD.t[k]>=A.ds&&DD.t[k]<A.de&&DD.tmp[k]!=null)v.push(DD.tmp[k]);
     if(v.length)mm=`<b>${Math.round(Math.min(...v))}°</b> / <b>${Math.round(Math.max(...v))}°</b> heute`.replace(' heute',isToday?' heute':'');}
   $('wxMinMax').innerHTML=mm;
   const arrow=W?(W.dp>=0.7?'↗':W.dp<=-0.7?'↘':'→'):'';
@@ -955,7 +987,8 @@ function renderDetail(){
     if(wx&&wx.key===wxKey()){
       const age=Math.round((Date.now()-wx.fetched)/6e4);
       const ageTxt=age<1?'gerade eben':age<60?`vor ${age} Min.`:age<1440?`vor ${Math.round(age/60)} Std.`:`vor ${Math.round(age/1440)} Tagen`;
-      let txt=W?`Open-Meteo, abgerufen ${new Date(wx.fetched).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} Uhr (${ageTxt}).`
+      const isHist=pickWx(t)===wxHist&&wxHist;
+      let txt=isHist?'Rückblick: historische Wetterdaten aus dem Open-Meteo-Archiv (Reanalyse). Wassertemperatur geschätzt.':W?`Open-Meteo, abgerufen ${new Date(wx.fetched).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} Uhr (${ageTxt}).`
         :'Für diesen Zeitpunkt gibt es keine Wetterdaten (Vorhersage reicht etwa 10 Tage). Der Wert enthält nur Mond und Sonne.';
       if(wxErr)txt=`⚠ Aktualisierung fehlgeschlagen (${wxErr}). `+txt;
       st.innerHTML=esc(txt)+(wxErr||age>120?' <button type="button" class="infobtn" id="wxRetry">Erneut versuchen</button>':'');st.style.color=wxErr||age>120?'var(--bad)':'';
@@ -1362,7 +1395,6 @@ fEl('fSave').onclick=async()=>{
   const m=fEl('fMsg'),t=new Date(fEl('fTime').value).getTime();
   if(!isFinite(t)){m.textContent='Datum und Uhrzeit fehlen.';return;}
   if(t>Date.now()+36e5){m.textContent='Der Zeitpunkt liegt in der Zukunft.';return;}
-  if(t<Date.now()-90*dayMs)m.textContent='Älter als 3 Monate: Wetterdaten sind dafür nicht verfügbar, Mond und Sonne schon.';
   const spKey=fEl('fSpecies').value;
   if(fEl('fResult').value==='fang'&&SPECIES[spKey]&&!confirmBanned){
     const warn=[];
@@ -1378,7 +1410,8 @@ fEl('fSave').onclick=async()=>{
   fEl('fSave').disabled=true;m.textContent='Wetter und Mond werden ergänzt …';
   let data=null;const key=fPos.lat.toFixed(3)+','+fPos.lng.toFixed(3);
   if(wx&&wx.key===key&&t>=wx.t[3]&&t<=wx.t[wx.t.length-1])data=wx;
-  else if(t>=Date.now()-91*dayMs){try{data=await fetchWx(fPos.lat,fPos.lng,pastDaysFor(t),1,isSea()?WTYPE():false);}catch(_){data=null;}}
+  else if(coversT(wxHist,t)&&wxHist.key===key)data=wxHist;
+  else{try{data=await wxForTime(fPos.lat,fPos.lng,t,isSea()?WTYPE():false);}catch(_){data=null;}}
   const snap=withContext({state:{lat:fPos.lat,lng:fPos.lng,species:SPECIES[spKey]?spKey:state.species,date:dstr(t)},wx:data},()=>{
     const a=analyze(),s=a.score(t);
     return {index:SPECIES[spKey]?s.total:null,time:s.timeLabel,moon:phaseName(a.il.phase),illum:Math.round(a.il.fraction*100),W:s.W,prLabel:s.prLabel};
@@ -1409,15 +1442,16 @@ function wxRecord(W,trend){return {p:+W.p.toFixed(1),dp:+W.dp.toFixed(1),trend,t
 let backfilling=false;
 async function backfillWeather(){
   if(backfilling||!navigator.onLine)return;
-  const todo=catches.filter(c=>!c.wx&&c.t>=Date.now()-91*dayMs&&c.t<=Date.now()&&isFinite(c.lat)&&isFinite(c.lng));
+  const todo=catches.filter(c=>!c.wx&&!c.noWx&&c.t<=Date.now()&&c.lat!=null&&isFinite(c.lat)&&isFinite(c.lng));
   if(!todo.length)return;
   backfilling=true;let n=0;
   try{
     for(const c of todo){
-      let data;try{data=await fetchWx(c.lat,c.lng,pastDaysFor(c.t),1,['ostsee','nordsee'].includes(c.water)?c.water:(isSea()?WTYPE():false));}catch(_){break;}
+      let data;try{data=await wxForTime(c.lat,c.lng,c.t,['ostsee','nordsee'].includes(c.water)?c.water:(isSea()?WTYPE():false));}catch(_){break;}
       const snap=withContext({state:{lat:c.lat,lng:c.lng,species:SPECIES[c.speciesKey]?c.speciesKey:state.species,date:dstr(c.t)},wx:data},()=>{
         const a=analyze(),s=a.score(c.t);return {index:SPECIES[c.speciesKey]?s.total:null,W:s.W,prLabel:s.prLabel,time:s.timeLabel};});
       if(snap.W){c.wx=wxRecord(snap.W,snap.prLabel);c.index=snap.index;c.daytime=snap.time;n++;}
+      else if(c.t<Date.now()-7*dayMs)c.noWx=true;
     }
   }finally{backfilling=false;}
   if(n){saveCatches();renderCatches();fEl('fMsg').textContent=`Wetter für ${n} ${n===1?'Eintrag':'Einträge'} nachgeladen.`;}
