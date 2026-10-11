@@ -12,10 +12,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Beißindex</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="leaflet.css">
 <style>
 :root{
   --bg:#070d18; --bg2:#0d1626; --card:#121c2e; --card2:#17233a; --ink:#eef3fb; --muted:#8d9ab3; --line:#22304a;
@@ -44,7 +41,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .placebtn{display:flex;align-items:center;gap:10px;min-width:0;flex:1;background:none;border:0;color:var(--ink);text-align:left;cursor:pointer;padding:4px 0}
 .placebtn .pin{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--chip);color:var(--accent2);flex:none}
 .placebtn .pl{display:flex;flex-direction:column;min-width:0}
-.placebtn #placeLabel{font-size:1.32rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.placebtn #placeLabel{font-size:1.18rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .placebtn small{color:var(--muted);font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:"Atkinson Hyperlegible",system-ui,sans-serif}
 .placebtn .chev{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;flex:none}
 .headbtns{display:flex;gap:8px;align-items:center}
@@ -92,8 +89,8 @@ details.card.more{padding:10px 16px}
 .rule{font-size:.9rem;margin:2px 2px 14px;color:var(--muted)}.rule.closed{color:var(--bad);font-weight:700}
 
 /* ---- Gauge ---- */
-.gauge{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;padding-top:20px;
-  background:radial-gradient(90% 80% at 50% 0%,rgba(61,139,255,.18),transparent 70%),linear-gradient(180deg,var(--card2),var(--card))}
+.gauge{--glow:#2f7bff;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;padding-top:20px;
+  background:radial-gradient(90% 80% at 50% 0%,color-mix(in srgb,var(--glow) 22%,transparent),transparent 70%),linear-gradient(180deg,var(--card2),var(--card))}
 .gside{text-align:center}.glabel{color:var(--muted);font-size:.85rem;margin-bottom:4px}
 .gval{font-weight:700;font-size:.92rem;line-height:1.45;white-space:nowrap}
 .ring{position:relative;width:150px;height:150px}
@@ -174,10 +171,11 @@ input[type=text],input[type=number],input[type=date],input[type=datetime-local],
 .form .full{grid-column:1/-1}
 .form input,.form select,.form textarea{width:100%}
 .posrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.photorow{display:flex;align-items:center;gap:10px}.photorow img{width:64px;height:64px;object-fit:cover;border-radius:10px}
+.photorow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.photorow img{width:64px;height:64px;object-fit:cover;border-radius:10px}
 .filebtn{display:inline-flex;align-items:center;justify-content:center}
 .install{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:16px;padding:12px 14px;margin:0 0 14px;font-size:.9rem}
 .install button{display:inline-block;margin:8px 8px 0 0;font-weight:700;border:0;border-radius:10px;padding:6px 12px;background:var(--chip);color:var(--ink);cursor:pointer}
+#map .leaflet-tile-pane{filter:brightness(.85) invert(1) contrast(.9) hue-rotate(200deg) saturate(.6)}
 #map{height:min(62vh,460px);border-radius:16px;border:1px solid var(--line);overflow:hidden;background:var(--bg2);z-index:0}
 
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:950;width:min(520px,calc(100% - 28px));
@@ -253,7 +251,7 @@ body.sheet-open{overflow:hidden}
       <div class="gside"><div class="glabel">Beste Zeiten</div><div class="gval" id="gLeft">–</div></div>
       <div class="ring">
         <svg viewBox="0 0 120 120" aria-hidden="true">
-          <defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5fd0ff"/><stop offset="1" stop-color="#2f7bff"/></linearGradient></defs>
+          <defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" id="rg0" stop-color="#5fd0ff"/><stop offset="1" id="rg1" stop-color="#2f7bff"/></linearGradient></defs>
           <circle cx="60" cy="60" r="50" class="ring-bg"/>
           <circle cx="60" cy="60" r="50" class="ring-fg" id="ringFg" stroke="url(#ringGrad)" stroke-dasharray="0 314"/>
           <circle cx="60" cy="60" r="38" class="ring-ticks"/>
@@ -324,7 +322,7 @@ body.sheet-open{overflow:hidden}
         <label>Köder / Methode<input type="text" id="fBait" placeholder="z. B. Gummifisch 10 cm"></label>
         <label>Tiefe (m)<input type="text" inputmode="decimal" id="fDepth"></label>
         <label class="full">Notiz<textarea id="fNote" rows="2"></textarea></label>
-        <div class="full photorow"><label class="btn ghost filebtn">📷 Foto<input type="file" id="fPhoto" accept="image/*" hidden></label><img id="fPhotoPrev" alt="" hidden><button type="button" class="infobtn" id="fPhotoDel" hidden>Foto entfernen</button></div>
+        <div class="full photorow"><label class="btn ghost filebtn">📷 Foto<input type="file" id="fPhoto" accept="image/*" hidden></label><img id="fPhotoPrev" alt="" hidden><button type="button" class="infobtn" id="fPhotoDel" hidden>Foto entfernen</button><small class="sub">Bleibt nur auf diesem Gerät, ohne Standortdaten im Bild.</small></div>
         <button type="button" class="btn full" id="fSave">Eintrag speichern</button>
         <button type="button" class="btn ghost full" id="fCancel">Abbrechen</button>
       </div>
@@ -353,6 +351,19 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>Datenquellen</h2></div>
       <p class="note">Wetter, Meerestemperatur und Gezeiten: Open-Meteo (u. a. DWD ICON). Wassertemperatur an Bundeswasserstraßen: Pegelonline (WSV). Karte, Küstenlinie und Bundesland: OpenStreetMap. Schonzeiten: Landesfischereiordnungen Berlin und Brandenburg, ohne Gewähr.</p>
       <p class="note">Alle deine Daten (Fangbuch, Fotos, Plätze) bleiben auf diesem Gerät.</p>
+    </div>
+    <div class="card">
+      <div class="cardhead"><h2>Datenschutz</h2></div>
+      <p class="note">Keine Anmeldung, keine Werbung, kein Tracking, keine Cookies. Fangbuch, Fotos, Plätze und Einstellungen werden nur im Speicher dieses Geräts abgelegt und nicht an uns übertragen.</p>
+      <p class="note">Für Wetter, Ortsnamen, Karte und Wassertemperatur ruft die App Daten bei Open-Meteo, OpenStreetMap (Nominatim, Overpass, Kartenkacheln) und Pegelonline ab. Dabei erhalten diese Dienste deine IP-Adresse und den Ort, auf etwa 1 km gerundet, für Ortsnamen auf etwa 100 m.</p>
+      <p class="note">Standort, Kamera und Fotos nutzt die App nur, wenn du es antippst und dein Gerät es erlaubt. Fotos werden verkleinert neu gespeichert; eingebettete Standortdaten (EXIF) gehen dabei verloren.</p>
+      <div class="frow"><a class="btn ghost" href="datenschutz.html" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">Datenschutzerklärung</a><button type="button" class="btn ghost" id="wipeBtn">Alle Daten löschen</button></div>
+    </div>
+    <div class="card">
+      <div class="cardhead"><h2>App weitergeben</h2></div>
+      <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
+      <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
+      <p class="note">Version 2026-10-11</p>
     </div>
   </section>
 </main>
@@ -419,7 +430,7 @@ body.sheet-open{overflow:hidden}
 </div>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="leaflet.js"></script>
 <script>
 /* ---------- Astronomie (nach SunCalc, V. Agafonkin, BSD) ---------- */
 const rad=Math.PI/180, dayMs=864e5, J1970=2440588, J2000=2451545, e=rad*23.4397;
@@ -576,6 +587,7 @@ const SP=()=>SPECIES[state.species]||SPECIES.zander;
 /* ---------- Gemessene Wassertemperatur ---------- */
 function manualWater(){let m=null;try{m=JSON.parse(localStorage.getItem('beissindex:water')||'null');}catch(_){}
   return m&&m.key===wxKey()&&isFinite(m.v)?m:null;}
+const G2=v=>(+v).toFixed(2),G3=v=>(+v).toFixed(3); // ~1 km bzw. ~100 m Genauigkeit für externe Dienste
 /* ---------- Pegelonline (WSV): gemessene Wassertemperatur an Bundeswasserstraßen ---------- */
 let pegel=null;
 try{pegel=JSON.parse(localStorage.getItem('beissindex:pegel')||'null');}catch(_){}
@@ -585,7 +597,7 @@ async function loadPegel(force){
   const base='https://www.pegelonline.wsv.de/webservices/rest-api/v2/';
   let res={key,fetched:Date.now(),value:null};
   try{
-    const r=await fetch(base+'stations.json?includeTimeseries=true&radius=10&latitude='+state.lat+'&longitude='+state.lng,{cache:'no-store'});
+    const r=await fetch(base+'stations.json?includeTimeseries=true&radius=10&latitude='+G2(state.lat)+'&longitude='+G2(state.lng),{cache:'no-store'});
     if(r.ok){
       const list=(await r.json()).filter(s=>Array.isArray(s.timeseries)&&s.timeseries.some(ts=>ts.shortname==='WT')&&isFinite(s.latitude));
       const dist=s=>Math.hypot((s.latitude-state.lat)*111,(s.longitude-state.lng)*111*Math.cos(state.lat*rad));
@@ -605,7 +617,7 @@ const pegelFor=t=>pegel&&pegel.key===wxKey()&&pegel.value!=null&&Math.abs(t-pege
 /* ---------- Wetter (Open-Meteo) ---------- */
 const wxKey=()=>state.lat.toFixed(3)+','+state.lng.toFixed(3);
 async function fetchWx(lat,lng,past,fwd,sea){
-  const u='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+
+  const u='https://api.open-meteo.com/v1/forecast?latitude='+G2(lat)+'&longitude='+G2(lng)+
     '&hourly=pressure_msl,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,temperature_2m'+
     '&past_days='+past+'&forecast_days='+fwd+'&timeformat=unixtime&timezone=auto&wind_speed_unit=kmh';
   const ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=ctl?setTimeout(()=>ctl.abort(),20000):null;
@@ -618,14 +630,14 @@ async function fetchWx(lat,lng,past,fwd,sea){
     ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m,sst:null};
   if(sea){
     try{
-      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lng+'&hourly=sea_surface_temperature&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
+      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_surface_temperature&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
       if(m.ok){const mj=(await m.json()).hourly;const mp=new Map();mj.time.forEach((x,i)=>{if(mj.sea_surface_temperature[i]!=null)mp.set(x*1000,mj.sea_surface_temperature[i]);});
         if(mp.size)out.sst=out.t.map(x=>mp.has(x)?mp.get(x):null);}
     }catch(_){}
   }
   if(sea==='nordsee'){
     try{
-      const g=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lng+'&hourly=sea_level_height_msl&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto',{cache:'no-store'});
+      const g=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_level_height_msl&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto',{cache:'no-store'});
       if(g.ok){const gj=(await g.json()).hourly;if(gj&&gj.sea_level_height_msl){const mp=new Map();gj.time.forEach((x,i)=>{if(gj.sea_level_height_msl[i]!=null)mp.set(x*1000,gj.sea_level_height_msl[i]);});
         if(mp.size)out.sl=out.t.map(x=>mp.has(x)?mp.get(x):null);}}
     }catch(_){}
@@ -799,7 +811,7 @@ function render(){
 }
 function renderWeek(){
   const out=[],today=dayBounds(todayStr())[0];let anyWx=false;
-  for(let d=0;d<7;d++){
+  for(let d=0;d<10;d++){
     const ds=dayBounds(dstr(today+d*dayMs+12*36e5))[0],date=dstr(ds+12*36e5);
     const r=withContext({state:{lat:state.lat,lng:state.lng,species:state.species,date},wx},()=>{
       const a=analyze(),now=Date.now(),pts=a.series.filter(p=>p.t<a.de&&(d>0||p.t>=now-30*6e4));
@@ -870,6 +882,9 @@ function renderCards(shown,t,isToday,bl){
   const C=2*Math.PI*50,v=bl?0:shown.total;
   $('ringFg').setAttribute('stroke-dasharray',`${(v/100*C).toFixed(1)} ${C.toFixed(1)}`);
   $('ringFg').setAttribute('stroke',bl?'var(--bad)':'url(#ringGrad)');
+  {const s=shown.total,g=s>=65?['#7cf0b0','#1fbf75']:s>=50?['#5fd0ff','#2f7bff']:s>=35?['#ffd36b','#ff9f2e']:['#ff9a7a','#ff5a45'];
+   $('rg0').setAttribute('stop-color',g[0]);$('rg1').setAttribute('stop-color',g[1]);
+   document.querySelector('.gauge').style.setProperty('--glow',g[1]);}
   $('score').style.color=bl?'var(--bad)':'var(--ink)';
   if(!bl)$('verdict').textContent=VERB(shown.total);
   $('gLeft').innerHTML=bl?'–':(A.wins&&A.wins.length?A.wins.map(s=>`${fmt(s.a)}–${fmt(s.b+10*6e4)}`).join('<br>'):'–');
@@ -926,7 +941,7 @@ function renderDetail(){
   const g=$('cursor');
   if(g&&selT!=null){g.style.display='';$('cl').setAttribute('x1',X(t));$('cl').setAttribute('x2',X(t));$('cc').setAttribute('cx',X(t));$('cc').setAttribute('cy',Y(shown.total));}
   else if(g)g.style.display='none';
-  $('readout').textContent=selT!=null?'Werte unten gelten für '+fmt(t)+' Uhr. „Jetzt“ springt zurück.':'Tippe oder wische in der Kurve, um einen Zeitpunkt zu wählen.';
+  $('readout').textContent=selT!=null?`Gewählt: ${fmt(t)} Uhr, Index ${bl?bl:shown.total}. Ring, Wetter und Sonne zeigen jetzt diese Uhrzeit. „Jetzt“ springt zurück.`:'Tippe oder wische in der Kurve, um einen Zeitpunkt zu wählen.';
   renderCards(shown,t,isToday,bl);
   const W=shown.W;
   $('wxTitle').textContent='Wetter '+(isToday&&selT==null?'jetzt':'um '+fmt(t)+' Uhr');
@@ -1004,7 +1019,7 @@ function onPoint(e){
   const r=chart.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W_,f=Math.max(0,Math.min(1,(x-PADL)/(W_-PADL-PADR)));
   const p=A.series[Math.round(f*(A.series.length-1))];
   if(selT===p.t)return;selT=p.t;
-  if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;renderDetail();});}
+  if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;renderDetail();renderSunMoon();});}
 }
 let pending=false;
 chart.addEventListener('pointerdown',onPoint);
@@ -1058,20 +1073,20 @@ async function geocode(q){
 }
 const qEl=$('placeQuery'),hitsEl=$('hits'),msg=$('locMsg');
 async function detectRegion(lat,lng){
-  try{const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&accept-language=de&lat='+lat+'&lon='+lng,{cache:'no-store'});
+  try{const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&accept-language=de&lat='+G3(lat)+'&lon='+G3(lng),{cache:'no-store'});
     if(!r.ok)return null;const j=await r.json();return (j.address&&(j.address.state||j.address.city))||null;}catch(_){return null;}
 }
 async function detectWater(lat,lng){
   // 1) Küste in der Nähe? (OpenStreetMap über Overpass)  2) sonst Höhe aus Open-Meteo
   let coast=null;
   try{
-    const q=`[out:json][timeout:8];way["natural"="coastline"](around:3000,${lat},${lng});out ids 1;`;
+    const q=`[out:json][timeout:8];way["natural"="coastline"](around:3000,${G2(lat)},${G2(lng)});out ids 1;`;
     const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
     if(r.ok){const j=await r.json();coast=j.elements&&j.elements.length>0;}
   }catch(_){}
   if(coast)return (lng>=9.3&&lat>=53.85)?'ostsee':'nordsee';
   let elev=wx&&wx.key===(+lat).toFixed(3)+','+(+lng).toFixed(3)?wx.elev:null;
-  if(elev==null){try{const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lng);if(r.ok)elev=(await r.json()).elevation[0];}catch(_){}}
+  if(elev==null){try{const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+G2(lat)+'&longitude='+G2(lng));if(r.ok)elev=(await r.json()).elevation[0];}catch(_){}}
   if(coast===null&&elev==null)return null;
   return elev!=null&&elev>=450?'bergland':'binnen';
 }
@@ -1113,7 +1128,7 @@ function toast(text,isErr,ms){const el=$('toast');el.textContent=text;el.classNa
   clearTimeout(toastTimer);if(ms!==0)toastTimer=setTimeout(()=>{el.hidden=true;},ms||(isErr?9000:3500));}
 $('toast').onclick=()=>{$('toast').hidden=true;};
 async function reverseName(lat,lng){
-  try{const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&accept-language=de&lat='+lat+'&lon='+lng,{cache:'no-store'});
+  try{const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&accept-language=de&lat='+G3(lat)+'&lon='+G3(lng),{cache:'no-store'});
     if(!r.ok)return null;const j=await r.json(),a=j.address||{};
     const local=a.suburb||a.village||a.town||a.city_district||a.hamlet||a.municipality||a.city||j.name||'';
     const city=a.city||a.town||a.municipality||'';
@@ -1203,7 +1218,8 @@ renderSpots();
 const dateEl=$('date');dateEl.value=state.date;
 let datePicked=false;
 dateEl.addEventListener('change',()=>{if(dateEl.value){state.date=dateEl.value;datePicked=state.date!==todayStr();selT=null;render();}});
-function goNow(){state.date=todayStr();dateEl.value=state.date;datePicked=false;selT=null;render();loadWeather(false).then(render);}
+function goNow(){if(navigator.vibrate)try{navigator.vibrate(8);}catch(_){}
+  state.date=todayStr();dateEl.value=state.date;datePicked=false;selT=null;render();loadWeather(false).then(render);}
 $('nowBtn').onclick=goNow;
 function syncDay(){if(!datePicked&&state.date!==todayStr())goNow();else if(state.date===todayStr())loadWeather(false).then(render);}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncDay();});
@@ -1481,6 +1497,21 @@ $('pClose').onclick=()=>{if(history.state&&history.state.sheet===3)history.back(
 window.addEventListener('popstate',()=>{if(!$('pSheet').hidden){$('pSheet').hidden=true;return;}if(!fEl('fSheet').hidden)hideSheet();if(!$('iSheet').hidden){$('iSheet').hidden=true;document.body.classList.remove('sheet-open');}});
 $('infoBtn').onclick=()=>{renderDetail();$('iSheet').hidden=false;document.body.classList.add('sheet-open');
   try{history.pushState({sheet:2},'','#berechnung');}catch(_){}$('iSheet').querySelector('.sheetbody').scrollTop=0;};
+$('shareBtn').onclick=async()=>{
+  const url=location.origin+location.pathname.replace(/[^/]*$/,'');
+  try{if(navigator.share){await navigator.share({title:'Beißindex',text:'Beißindex: Beißzeiten nach Fischart, Wetter und Fangbuch',url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  try{await navigator.clipboard.writeText(url);toast('Link kopiert: '+url);}catch(_){toast(url);}
+};
+let wipeArmed=false;
+$('wipeBtn').onclick=async()=>{
+  if(!wipeArmed){wipeArmed=true;$('wipeBtn').textContent='Wirklich alles löschen?';toast('Nochmal tippen löscht Fangbuch, Fotos, Plätze und Einstellungen auf diesem Gerät. Vorher ggf. eine Sicherung speichern.',true);
+    setTimeout(()=>{wipeArmed=false;$('wipeBtn').textContent='Alle Daten löschen';},6000);return;}
+  try{Object.keys(localStorage).filter(k=>k.startsWith('beissindex:')).forEach(k=>localStorage.removeItem(k));}catch(_){}
+  try{const db=await photoDB();db.close();}catch(_){}
+  try{indexedDB.deleteDatabase('beissindex');}catch(_){}
+  try{if(window.caches){for(const k of await caches.keys())await caches.delete(k);}}catch(_){}
+  location.reload();
+};
 $('moreInfo').onclick=()=>$('infoBtn').click();
 $('moreBook').onclick=()=>{showTab('fang');openSheet();};
 $('iClose').onclick=()=>{if(history.state&&history.state.sheet){history.back();}else{$('iSheet').hidden=true;document.body.classList.remove('sheet-open');}};
@@ -1589,6 +1620,7 @@ initForm();renderCatches();
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 render();
+try{if(!localStorage.getItem('beissindex:seenGeoHint')){localStorage.setItem('beissindex:seenGeoHint','1');setTimeout(()=>toast('Tipp: Mit dem Fadenkreuz oben rechts übernimmst du deinen aktuellen Standort.',false,7000),1200);}}catch(_){}
 loadWeather(false).then(render);
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
