@@ -180,6 +180,10 @@ input[type=text],input[type=number],input[type=date],input[type=datetime-local],
 .install button{display:inline-block;margin:8px 8px 0 0;font-weight:700;border:0;border-radius:10px;padding:6px 12px;background:var(--chip);color:var(--ink);cursor:pointer}
 #map{height:min(62vh,460px);border-radius:16px;border:1px solid var(--line);overflow:hidden;background:var(--bg2);z-index:0}
 
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:950;width:min(520px,calc(100% - 28px));
+  background:#1d2b46;border:1px solid var(--line);border-radius:16px;padding:12px 14px;font-size:.92rem;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.toast.err{border-color:var(--bad)}
+#geoTop.busy svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 /* ---- Tabbar ---- */
 .tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);z-index:900;width:min(560px,calc(100% - 24px));
   display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;border-radius:28px;background:rgba(23,35,58,.86);border:1px solid var(--line);
@@ -229,6 +233,7 @@ body.sheet-open{overflow:hidden}
   </button>
   <div class="headbtns">
     <button type="button" class="roundbtn" id="nowBtn" hidden>Jetzt</button>
+    <button type="button" class="roundbtn" id="geoTop" aria-label="Aktuellen Standort verwenden" title="Aktuellen Standort verwenden"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
     <label class="roundbtn cal" title="Datum wählen"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><input type="date" id="date" aria-label="Datum wählen"></label>
   </div>
 </header>
@@ -352,6 +357,7 @@ body.sheet-open{overflow:hidden}
   </section>
 </main>
 
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <nav class="tabbar" aria-label="Bereiche">
   <button type="button" data-tab="prog" aria-current="page"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg><span>Prognose</span></button>
   <button type="button" data-tab="fang"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c3-5 9-6 13-3l4-3v12l-4-3c-4 3-10 2-13-3z"/><circle cx="8" cy="11" r=".9" fill="currentColor"/></svg><span>Fänge</span></button>
@@ -1075,9 +1081,11 @@ async function setPlace(name,lat,lng){
   setTimeout(renderSpots,0);
   state.place=name;state.lat=+(+lat).toFixed(4);state.lng=+(+lng).toFixed(4);persist();
   hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();showManual();render();
+  const myKey=wxKey();
   const wt=await detectWater(state.lat,state.lng);
-  if(wt){try{localStorage.setItem('beissindex:waterKey',wxKey());}catch(_){}}
-  detectRegion(state.lat,state.lng).then(rg=>{if(rg){state.region=rg;persist();render();}});
+  if(wxKey()!==myKey)return; // inzwischen wurde ein anderer Ort gewählt
+  if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
+  detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg;persist();render();}});
   loadPegel(true).then(render);
   if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
     if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;}
@@ -1100,12 +1108,46 @@ async function findPlace(){
 }
 $('findPlace').onclick=findPlace;
 qEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();findPlace();}});
-$('geo').onclick=()=>{
-  if(!navigator.geolocation){msg.textContent='Standortabfrage wird hier nicht unterstützt.';return;}
-  msg.textContent='Standort wird abgefragt …';
-  navigator.geolocation.getCurrentPosition(p=>setPlace('Aktueller Standort',p.coords.latitude,p.coords.longitude),
-    err=>{msg.textContent=geoError(err);},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
-};
+let toastTimer=null;
+function toast(text,isErr,ms){const el=$('toast');el.textContent=text;el.className='toast'+(isErr?' err':'');el.hidden=false;
+  clearTimeout(toastTimer);if(ms!==0)toastTimer=setTimeout(()=>{el.hidden=true;},ms||(isErr?9000:3500));}
+$('toast').onclick=()=>{$('toast').hidden=true;};
+async function reverseName(lat,lng){
+  try{const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&accept-language=de&lat='+lat+'&lon='+lng,{cache:'no-store'});
+    if(!r.ok)return null;const j=await r.json(),a=j.address||{};
+    const local=a.suburb||a.village||a.town||a.city_district||a.hamlet||a.municipality||a.city||j.name||'';
+    const city=a.city||a.town||a.municipality||'';
+    const name=[local,city&&city!==local?city:''].filter(Boolean).join(', ');
+    return {name:name||null,state:a.state||a.city||null};}catch(_){return null;}
+}
+function getPosition(){
+  return new Promise((res,rej)=>{
+    navigator.geolocation.getCurrentPosition(res,err=>{
+      if(err&&err.code===1)return rej(err);
+      // genaue Ortung fehlgeschlagen oder zu langsam: grobe Ortung versuchen
+      navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:false,timeout:15000,maximumAge:300000});
+    },{enableHighAccuracy:true,timeout:12000,maximumAge:0});
+  });
+}
+let locating=false;
+async function locateMe(){
+  if(locating)return;
+  if(!navigator.geolocation){toast('Standortabfrage wird auf diesem Gerät nicht unterstützt.',true);return;}
+  locating=true;$('geoTop').classList.add('busy');toast('Standort wird ermittelt …',false,0);msg.textContent='Standort wird ermittelt …';
+  try{
+    const p=await getPosition();
+    const lat=p.coords.latitude,lng=p.coords.longitude,acc=Math.round(p.coords.accuracy||0);
+    const rv=await reverseName(lat,lng);
+    const name='📍 '+((rv&&rv.name)||`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
+    if(rv&&rv.state)state.region=rv.state;
+    await setPlace(name,lat,lng);
+    toast(`Standort übernommen: ${name.slice(3)}${acc?` (± ${acc} m)`:''}`);
+  }catch(err){
+    const t=geoError(err);msg.textContent=t;toast(t,true);
+  }finally{locating=false;$('geoTop').classList.remove('busy');}
+}
+$('geo').onclick=locateMe;
+$('geoTop').onclick=locateMe;
 $('wxStatus').addEventListener('click',async e=>{if(!e.target.closest('#wxRetry'))return;e.target.disabled=true;await loadWeather(true);render();});
 function showManual(){const m=manualWater();$('mwDel').hidden=!m;
   $('mwInfo').textContent=m?`Gemessen: ${r1(m.v)} °C am ${new Date(m.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}. Gilt 3 Tage für diesen Standort und ersetzt die Schätzung.`:'Ohne Messung schätzt die App die Wassertemperatur aus der Luft der letzten 30 Tage. Eine eigene Messung ist genauer.';}
@@ -1122,7 +1164,7 @@ function renderSpots(){
   const here=spots.some(s=>Math.abs(s.lat-state.lat)<1e-4&&Math.abs(s.lng-state.lng)<1e-4);
   $('spotSave').hidden=here||!$('spotForm').hidden;
 }
-$('spotSave').onclick=()=>{$('spotForm').hidden=false;$('spotSave').hidden=true;$('spotName').value=state.place;$('spotName').focus();};
+$('spotSave').onclick=()=>{$('spotForm').hidden=false;$('spotSave').hidden=true;$('spotName').value=state.place.replace(/^📍\s*/,'');$('spotName').focus();};
 function addSpot(){
   const name=$('spotName').value.trim().slice(0,60);if(!name)return;
   spots.push({name,lat:state.lat,lng:state.lng,waterMode:state.waterMode,waterAuto:state.waterAuto,region:state.region});
@@ -1271,7 +1313,7 @@ function saveCatches(){try{localStorage.setItem(CKEY,JSON.stringify(catches));re
 const fEl=id=>$(id);
 let fPos={lat:state.lat,lng:state.lng,src:'Suchort'};
 function localInput(t){const d=new Date(t-new Date(t).getTimezoneOffset()*6e4);return d.toISOString().slice(0,16);}
-function syncFormPlace(){fPos={lat:state.lat,lng:state.lng,src:'Suchort'};fEl('fPlace').value=state.place;showPos();}
+function syncFormPlace(){fPos={lat:state.lat,lng:state.lng,src:'Suchort'};fEl('fPlace').value=state.place.replace(/^📍\s*/,'');showPos();}
 function showPos(){fEl('fPos').textContent=`${fPos.lat.toFixed(5)}, ${fPos.lng.toFixed(5)} (${fPos.src})`;}
 function fillSpeciesSelect(){
   const sel=fEl('fSpecies'),cur=sel.value,W=WATERS[WTYPE()],used=new Set();
