@@ -50,6 +50,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
 /* ---- Tagesleiste ---- */
 .days{padding:2px 0 10px}
+.datebar{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:640px;margin:0 auto 8px;padding:6px 8px 6px 14px;width:calc(100% - 28px);border-radius:14px;font-weight:700;font-size:.9rem}
+.datebar.past{background:rgba(255,181,71,.16);color:#ffd38a}.datebar.future{background:rgba(95,208,255,.14);color:#9fe3ff}.datebar.today{background:rgba(61,220,132,.14);color:#8ff0b8}
+.datebar .roundbtn{height:34px;min-width:0;font-size:.85rem;padding:0 12px;white-space:nowrap;flex:none}
 .week{list-style:none;margin:0 auto;padding:0 14px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;max-width:640px;scroll-snap-type:x proximity}
 .week::-webkit-scrollbar{display:none}
 .week li{flex:0 0 auto;scroll-snap-align:start}
@@ -66,6 +69,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 /* ---- Karten ---- */
 .card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:22px;padding:16px;margin:0 0 14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.when{display:inline-flex;align-items:center;gap:6px;font-size:.86rem;font-weight:700;padding:5px 11px;border-radius:999px;margin:-2px 0 12px;background:rgba(61,220,132,.14);color:#8ff0b8}
+.when.past{background:rgba(255,181,71,.16);color:#ffd38a}.when.future{background:rgba(95,208,255,.14);color:#9fe3ff}
+.whenhead{color:var(--accent2)}
 .cond{color:var(--muted);font-size:.85rem;text-align:right;white-space:nowrap}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:14px}
 .duo .card{margin:0;padding:14px}
@@ -92,7 +98,7 @@ details.card.more{padding:10px 16px}
 .gauge{--glow:#2f7bff;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;padding-top:20px;
   background:radial-gradient(90% 80% at 50% 0%,color-mix(in srgb,var(--glow) 22%,transparent),transparent 70%),linear-gradient(180deg,var(--card2),var(--card))}
 .gside{text-align:center}.glabel{color:var(--muted);font-size:.85rem;margin-bottom:4px}
-.gval{font-weight:700;font-size:.92rem;line-height:1.45;white-space:nowrap}
+.gval{font-weight:700;font-size:.86rem;line-height:1.45;white-space:nowrap;letter-spacing:-.01em}
 .ring{position:relative;width:150px;height:150px}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
 .ring-bg{fill:none;stroke:rgba(255,255,255,.07);stroke-width:12}
@@ -230,11 +236,11 @@ body.sheet-open{overflow:hidden}
     <span class="pin"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/></svg></span><span class="pl"><span id="placeLabel">Berlin</span><small id="placeSub"></small></span><span class="chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
   </button>
   <div class="headbtns">
-    <button type="button" class="roundbtn" id="nowBtn" hidden>Jetzt</button>
     <button type="button" class="roundbtn" id="geoTop" aria-label="Aktuellen Standort verwenden" title="Aktuellen Standort verwenden"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
     <label class="roundbtn cal" title="Datum wählen"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><input type="date" id="date" aria-label="Datum wählen"></label>
   </div>
 </header>
+<div class="datebar" id="dateBar" hidden><span id="dateBarText"></span><button type="button" class="roundbtn" id="nowBtn">Zu heute</button></div>
 <nav class="days" aria-label="Tage"><ul class="week" id="week"></ul></nav>
 </div>
 
@@ -265,6 +271,7 @@ body.sheet-open{overflow:hidden}
 
     <div class="card wxcard">
       <div class="cardhead"><h2 id="wxTitle">Wetter</h2><span class="cond" id="wxCond"></span></div>
+      <div class="when" id="wxWhen"></div>
       <div class="wxmain">
         <div class="wxicon" id="wxIcon"></div>
         <div class="wxtemp"><div class="big" id="wxTemp">–</div><div class="minmax" id="wxMinMax"></div></div>
@@ -806,7 +813,8 @@ let A=null;
 function render(){
   A=analyze();
   const {ds,de,series,ev}=A,now=Date.now(),isToday=now>=ds&&now<de;
-  $('placeLabel').textContent=state.place;$('placeSub').textContent=SP().name+' · '+({binnen:'Binnengewässer',ostsee:'Ostsee',nordsee:'Nordsee',bergland:'Bergland'}[WTYPE()]||'');
+  $('placeLabel').textContent=state.place;
+  $('placeSub').textContent=SP().name+' · '+({binnen:'Binnengewässer',ostsee:'Ostsee',nordsee:'Nordsee',bergland:'Bergland'}[WTYPE()]||'');
   if(typeof updateMapPlace==='function')updateMapPlace();
   $('speciesInfo').textContent=SP().info;
   {const rl=ruleFor(state.species,Date.parse(state.date+'T12:00'));const el=$('speciesRule');
@@ -861,7 +869,7 @@ function renderWeek(){
   $('week').innerHTML=out.map(o=>{
     const [,c]=verdict(o.best.total),dd=new Date(o.ds);
     return `<li><button type="button" data-date="${o.date}"${o.date===state.date?' aria-current="date"':''} aria-label="${dd.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})}, Bestwert ${o.bl?o.bl:o.best.total}">
-      ${o.ds===today?'<span class="today"></span>':''}<span class="dn">${dd.getDate()}</span><span class="wd">${o.ds===today?'Heute':dd.toLocaleDateString('de-DE',{weekday:'short'})}</span>
+      ${o.ds===today?'<span class="today"></span>':''}<span class="dn">${dd.getDate()}</span><span class="wd">${o.ds===today?'Heute':(o.extra||dd.getMonth()!==new Date(today).getMonth()?dd.toLocaleDateString('de-DE',{weekday:'short'})+' '+dd.toLocaleDateString('de-DE',{month:'short'}).replace('.',''):dd.toLocaleDateString('de-DE',{weekday:'short'}))}</span>
       <span class="sc" style="color:${o.bl?'var(--bad)':c}">${o.bl?'🔒':o.best.total}</span></button></li>`;}).join('');
   const cur=$('week').querySelector('[aria-current]');if(cur&&cur.scrollIntoView)try{cur.scrollIntoView({inline:'center',block:'nearest'});}catch(_){}
   $('weekNote').textContent=`Bester Wert je Tag für ${SP().name}. Tippen zeigt den Tag im Detail.`+(anyWx?' Wetter fließt ein, soweit die Vorhersage reicht.':' Ohne Wetterdaten: nur Mond und Sonne.');
@@ -969,14 +977,20 @@ function renderDetail(){
   let [vt,vc]=verdict(shown.total);
   const bl=blocked(t);$('score').textContent=bl?'⛔':shown.total;$('score').style.color=bl?'var(--bad)':vc;$('verdict').textContent=bl||vt;
   $('scoreSub').textContent=`${label}. Tageshöchstwert ${best.total} um ${fmt(best.t)} Uhr.`;
-  $('nowBtn').hidden=isToday&&selT==null;
+  {const bar=$('dateBar'),past=de<=now,kind=isToday?'today':past?'past':'future';
+   bar.hidden=isToday&&selT==null;bar.className='datebar '+kind;
+   $('dateBarText').textContent=(kind==='today'?'Heute, ':kind==='past'?'Rückblick: ':'Vorhersage: ')+new Date(isToday?t:ds+12*36e5).toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+(selT!=null?', '+fmt(t)+' Uhr':'');}
   const g=$('cursor');
   if(g&&selT!=null){g.style.display='';$('cl').setAttribute('x1',X(t));$('cl').setAttribute('x2',X(t));$('cc').setAttribute('cx',X(t));$('cc').setAttribute('cy',Y(shown.total));}
   else if(g)g.style.display='none';
   $('readout').textContent=selT!=null?`Gewählt: ${fmt(t)} Uhr, Index ${bl?bl:shown.total}. Ring, Wetter und Sonne zeigen jetzt diese Uhrzeit. „Jetzt“ springt zurück.`:'Tippe oder wische in der Kurve, um einen Zeitpunkt zu wählen.';
   renderCards(shown,t,isToday,bl);
   const W=shown.W;
-  $('wxTitle').textContent='Wetter '+(isToday&&selT==null?'jetzt':'um '+fmt(t)+' Uhr');
+  $('wxTitle').textContent=isToday&&selT==null?'Wetter jetzt':'Wetter um '+fmt(t)+' Uhr';
+  {const el=$('wxWhen'),d=new Date(t),full=d.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+   const kind=isToday?'today':(A.de<=Date.now()?'past':'future');
+   el.className='when'+(kind==='today'?'':' '+kind);
+   el.textContent=(kind==='today'?'Heute':kind==='past'?'Rückblick':'Vorhersage')+' · '+full+(isToday&&selT==null?'':', '+fmt(t)+' Uhr');}
   $('wx').innerHTML=W?[
     ['Luftdruck',r1(W.p)+' hPa'],['Tendenz (3 Std.)',(W.dp>0?'+':'')+r1(W.dp)+' hPa, '+shown.prLabel],
     ['Luftfeuchtigkeit',Math.round(W.rh)+' %'],['Bewölkung',Math.round(W.cc)+' %'],
