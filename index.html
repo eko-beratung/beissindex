@@ -146,6 +146,8 @@ svg.chart{display:block;width:100%;height:auto;touch-action:pan-y}
 .legend span::before{content:"";display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;background:currentColor}
 .legend .lg-major::before{background:var(--bobber)}.legend .lg-minor::before{background:var(--reed)}.legend .lg-sun::before{background:var(--sun)}
 .maplegend span::before{border-radius:50%;width:10px;height:10px}
+.legend .mk-comm::before{background:#a78bfa}
+.commtoggle{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.9rem;color:var(--ink)}.commtoggle input{width:20px;height:20px;accent-color:#a78bfa}
 .legend .mk-place::before{background:#d7362b}.legend .mk-fang::before{background:#2f9e5a}.legend .mk-biss::before{background:#e0a020}.legend .mk-null::before{background:#8a9699}
 
 /* ---- Listen ---- */
@@ -342,7 +344,8 @@ body.sheet-open{overflow:hidden}
     <div class="card" id="kartebox">
       <div class="cardhead"><h2>Karte</h2><button type="button" class="infobtn" id="mapFit">Alle Fänge</button></div>
       <div id="map" role="application" aria-label="Karte mit Standort und Fängen"></div>
-      <div class="legend maplegend"><span class="mk-place">Standort</span><span class="mk-fang">Fang</span><span class="mk-biss">Biss</span><span class="mk-null">Nullnummer</span></div>
+      <div class="legend maplegend"><span class="mk-place">Standort</span><span class="mk-fang">Fang</span><span class="mk-biss">Biss</span><span class="mk-null">Nullnummer</span><span class="mk-comm">Community</span></div>
+      <label class="commtoggle" id="mapCommWrap" hidden><input type="checkbox" id="mapComm" checked> Community-Fänge anzeigen (<span id="mapCommN">0</span>)</label>
       <p class="note" id="mapNote">Tippe auf die Karte, um dort den Standort zu setzen oder eine Fangposition zu übernehmen.</p>
     </div>
   </section>
@@ -363,6 +366,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>Datenschutz</h2></div>
       <p class="note">Keine Anmeldung, keine Werbung, kein Tracking, keine Cookies. Fangbuch, Fotos, Plätze und Einstellungen werden nur im Speicher dieses Geräts abgelegt und nicht an uns übertragen.</p>
       <p class="note">Für Wetter, Ortsnamen, Karte und Wassertemperatur ruft die App Daten bei Open-Meteo, OpenStreetMap (Nominatim, Overpass, Kartenkacheln) und Pegelonline ab. Dabei erhalten diese Dienste deine IP-Adresse und den Ort, auf etwa 1 km gerundet, für Ortsnamen auf etwa 100 m.</p>
+      <p class="note">Community-Fänge: Die App lädt eine Liste mit Fängen, die vom Betreiber freiwillig veröffentlicht wurde, direkt von diesem Server. Eigene Einträge werden nie automatisch geteilt.</p>
       <p class="note">Standort, Kamera und Fotos nutzt die App nur, wenn du es antippst und dein Gerät es erlaubt. Fotos werden verkleinert neu gespeichert; eingebettete Standortdaten (EXIF) gehen dabei verloren.</p>
       <div class="frow"><a class="btn ghost" href="datenschutz.html" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">Datenschutzerklärung</a><button type="button" class="btn ghost" id="wipeBtn">Alle Daten löschen</button></div>
     </div>
@@ -424,11 +428,12 @@ body.sheet-open{overflow:hidden}
       <label>Ergebnis<select id="flResult"><option value="">Alle</option><option value="fang">Fänge</option><option value="biss">Bisse ohne Fang</option><option value="null">Nullnummern</option></select></label>
     </div>
     <div class="stats" id="fStats"></div>
-    <details class="eval" id="evalBox"><summary>Auswertung: Wann und womit fängst du?</summary><div id="evalBody"></div></details>
+    <details class="eval" id="evalBox"><summary>Auswertung: Wann und womit fängst du?</summary><label class="commtoggle" id="evalCommWrap" hidden><input type="checkbox" id="evalComm"> Community-Fänge einbeziehen (<span id="evalCommN">0</span>)</label><div id="evalBody"></div></details>
     <ul class="catches" id="catchList"></ul>
     <button type="button" class="btn ghost" id="fMore" hidden>Mehr anzeigen</button>
     <div class="tools">
       <button type="button" class="btn ghost" id="fCsv">CSV exportieren</button>
+      <button type="button" class="btn ghost" id="fComm">Für Community exportieren</button>
       <button type="button" class="btn ghost" id="fBackup">Sicherung speichern</button>
       <label class="btn ghost filebtn">Sicherung laden<input type="file" id="fImport" accept=".json,application/json" hidden></label>
     </div>
@@ -1309,6 +1314,13 @@ function updateMapPlace(){
 function updateMapCatches(){
   if(!map||!catchLayer)return;
   catchLayer.clearLayers();
+  if(typeof community!=='undefined'&&community.length&&$('mapComm').checked){
+    communityOnly().forEach(c=>{
+      const size=[c.weight!=null?n1(c.weight)+' kg':'',c.length!=null?n1(c.length)+' cm':''].filter(Boolean).join(', ');
+      L.circleMarker([c.lat,c.lng],{radius:6,color:'#fff',weight:1.5,fillColor:'#a78bfa',fillOpacity:.9})
+        .bindPopup(`<b>Community: ${esc(c.result==='fang'?c.species:(c.result==='biss'?'Biss ohne Fang':'Nullnummer')+' ('+c.species+')')}</b>${size?'<br>'+esc(size):''}<br>${new Date(c.t).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'})}, gegen ${new Date(c.t).getHours()} Uhr${c.place?'<br>'+esc(c.place):''}${c.index!=null?'<br>Index '+c.index:''}${c.bait?'<br>'+esc(c.bait):''}<br><small>Ort auf etwa 1 km gerundet</small>`)
+        .addTo(catchLayer);});
+  }
   catches.forEach(c=>{
     if(!isFinite(c.lat)||!isFinite(c.lng))return;
     const size=[c.weight!=null?n1(c.weight)+' kg':'',c.length!=null?n1(c.length)+' cm':''].filter(Boolean).join(', ');
@@ -1488,7 +1500,7 @@ function renderCatches(){
     (last?`<br>Zuletzt: ${esc(last.species)}${last.weight!=null?' '+n1(last.weight)+' kg':''}${last.length!=null?' · '+n1(last.length)+' cm':''}, ${new Date(last.t).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'})}`:'')+backupHint()
     :'Noch keine Einträge. Trag auch Nullnummern ein, sonst lässt sich der Index später nicht prüfen.';
   fEl('fOpen').textContent=`Alle Einträge (${catches.length})`;
-  fEl('fOpen').disabled=!catches.length;
+  fEl('fOpen').disabled=!catches.length&&!(typeof community!=='undefined'&&community.length);
   if(fEl('fSheet').hidden)return;
   // Unterseite: Filter, Statistik, Liste
   const sel=fEl('flSpecies'),cur=sel.value,used=[...new Set(catches.map(c=>c.species))].sort((x,y)=>x.localeCompare(y,'de'));
@@ -1512,7 +1524,8 @@ function renderCatches(){
       ${c.bait||c.depth!=null||c.note?`<div class="d">${esc([c.bait,c.depth!=null?n1(c.depth)+' m Tiefe':'',c.note].filter(Boolean).join(' · '))}</div>`:''}
       <div class="a">${map}<button type="button" data-edit="${esc(c.id)}">Bearbeiten</button><button type="button" data-del="${esc(c.id)}">${pendingDel===c.id?'Wirklich löschen?':'Löschen'}</button></div></li>`;
   }).join('')||'<li class="d">Keine Einträge für diesen Filter.</li>';
-  fillThumbs();renderEval(list);
+  fillThumbs();
+  {let ev=list;if(community.length&&$('evalComm').checked){const fs=fEl('flSpecies').value,fr=fEl('flResult').value;ev=list.concat(communityOnly().filter(c=>(!fs||c.species===fs)&&(!fr||c.result===fr)));}renderEval(ev);}
   fEl('fMore').hidden=list.length<=listLimit;
   fEl('fMore').textContent=`Mehr anzeigen (${list.length-listLimit} weitere)`;
 }
@@ -1619,6 +1632,52 @@ function download(name,content,type){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
 }
+/* ---------- Community-Fänge ----------
+   Export: anonymisierte CSV (Ort auf ~1 km, Zeit auf die Stunde, ohne Notizen, Fotos, IDs).
+   Diese Datei lädt der Betreiber als community-faenge.csv ins Repository; alle Nutzer sehen sie dann. */
+const COMM_COLS=['Datum','Stunde','Ergebnis','Fischart','Gewicht kg','Länge cm','Gewässer','Breite','Länge','Köder','Tiefe m','Beißindex','Tageszeit','Mondphase','Luftdruck hPa','Drucktendenz','Wassertemperatur °C','Lufttemperatur °C','Wind km/h','Wolken %'];
+fEl('fComm').onclick=()=>{
+  const list=catches.filter(c=>c.lat!=null&&isFinite(c.lat));
+  if(!list.length){fEl('fMsg').textContent='Keine Einträge mit Position zum Exportieren.';return;}
+  const c2=v=>{if(v==null||v==='')return '';const s=typeof v==='number'?String(v).replace('.',','):String(v).replace(/[\r\n]+/g,' ');return /[;"]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const rows=list.map(e=>{const d=new Date(e.t),w=e.wx||{};return [dstr(e.t),String(d.getHours()).padStart(2,'0'),e.result,e.species,e.weight,e.length,(e.place||'').replace(/^📍\s*/,''),
+    +(+e.lat).toFixed(2),+(+e.lng).toFixed(2),e.bait,e.depth,e.index,e.daytime,e.moon,w.p,w.trend,w.t72,w.tmp,w.ws,w.cc].map(c2).join(';');});
+  download('community-faenge.csv','\ufeff'+COMM_COLS.join(';')+'\n'+rows.join('\n'),'text/csv;charset=utf-8');
+  fEl('fMsg').textContent=`${rows.length} Einträge anonymisiert exportiert (Ort auf etwa 1 km gerundet, Uhrzeit auf die Stunde, ohne Notizen und Fotos). Datei als „community-faenge.csv“ ins GitHub-Repository hochladen.`;
+};
+function parseCSV(txt){
+  txt=txt.replace(/^\ufeff/,'');const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<txt.length;i++){const ch=txt[i];
+    if(q){if(ch==='"'){if(txt[i+1]==='"'){f+='"';i++;}else q=false;}else f+=ch;continue;}
+    if(ch==='"')q=true;else if(ch===';'){row.push(f);f='';}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&txt[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x!==''))rows.push(row);row=[];}else f+=ch;}
+  row.push(f);if(row.some(x=>x!==''))rows.push(row);return rows;
+}
+let community=[];
+async function loadCommunity(){
+  try{
+    const r=await fetch('community-faenge.csv',{cache:'no-store'});if(!r.ok)return;
+    const rows=parseCSV(await r.text());if(rows.length<2)return;
+    const H=rows[0].map(x=>x.trim()),ix=n=>H.indexOf(n);
+    const num=v=>{if(v==null||v==='')return null;const x=parseFloat(String(v).replace(',','.'));return isFinite(x)?x:null;};
+    const S=v=>v==null?'':String(v).slice(0,80);
+    community=rows.slice(1).map(c=>{
+      const d=S(c[ix('Datum')]),hh=parseInt(c[ix('Stunde')]||'12',10),t=Date.parse(d+'T'+String(isFinite(hh)?hh:12).padStart(2,'0')+':30');
+      const res=['fang','biss','null'].includes(c[ix('Ergebnis')])?c[ix('Ergebnis')]:'fang';
+      const wt=num(c[ix('Wassertemperatur °C')]);
+      return {t,result:res,species:S(c[ix('Fischart')]),weight:num(c[ix('Gewicht kg')]),length:num(c[ix('Länge cm')]),place:S(c[ix('Gewässer')]),
+        lat:num(c[ix('Breite')]),lng:num(c[ix('Länge')]),bait:S(c[ix('Köder')]),index:num(c[ix('Beißindex')]),daytime:S(c[ix('Tageszeit')]),moon:S(c[ix('Mondphase')]),
+        wx:(wt!=null||c[ix('Drucktendenz')])?{t72:wt,trend:S(c[ix('Drucktendenz')]),p:num(c[ix('Luftdruck hPa')])}:null,community:true};
+    }).filter(c=>isFinite(c.t)&&c.lat!=null&&c.lng!=null&&Math.abs(c.lat)<=90&&Math.abs(c.lng)<=180);
+  }catch(_){community=[];}
+  const n=community.length;
+  $('mapCommWrap').hidden=!n;$('evalCommWrap').hidden=!n;$('mapCommN').textContent=n;$('evalCommN').textContent=n;
+  updateMapCatches();renderCatches();
+}
+// eigene Einträge nicht doppelt zählen
+const ownKeys=()=>new Set(catches.map(c=>dstr(c.t)+'|'+new Date(c.t).getHours()+'|'+c.species+'|'+(+c.lat).toFixed(2)+'|'+(+c.lng).toFixed(2)));
+const communityOnly=()=>{const k=ownKeys();return community.filter(c=>!k.has(dstr(c.t)+'|'+new Date(c.t).getHours()+'|'+c.species+'|'+(+c.lat).toFixed(2)+'|'+(+c.lng).toFixed(2)));};
+$('mapComm').onchange=()=>updateMapCatches();
+$('evalComm').onchange=()=>renderCatches();
 fEl('fCsv').onclick=()=>{
   if(!catches.length){fEl('fMsg').textContent='Keine Einträge zum Exportieren.';return;}
   const head=['Datum','Uhrzeit','Ergebnis','Fischart','Gewicht kg','Länge cm','Gewässer','Breite','Länge','Köder','Tiefe m','Notiz','Beißindex','Tageszeit','Mondphase','Mond %','Luftdruck hPa','Drucktendenz 3h','Temperatur °C','Ø Temp 3 Tage','Feuchte %','Wolken %','Wind km/h','Böen km/h','Niederschlag mm'];
@@ -1670,6 +1729,7 @@ initForm();renderCatches();
 render();
 try{if(!localStorage.getItem('beissindex:seenGeoHint')){localStorage.setItem('beissindex:seenGeoHint','1');setTimeout(()=>toast('Tipp: Mit dem Fadenkreuz oben rechts übernimmst du deinen aktuellen Standort.',false,7000),1200);}}catch(_){}
 loadWeather(false).then(render);
+loadCommunity();
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
