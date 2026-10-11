@@ -147,6 +147,8 @@ svg.chart{display:block;width:100%;height:auto;touch-action:pan-y}
 .legend .lg-major::before{background:var(--bobber)}.legend .lg-minor::before{background:var(--reed)}.legend .lg-sun::before{background:var(--sun)}
 .maplegend span::before{border-radius:50%;width:10px;height:10px}
 .legend .mk-comm::before{background:#a78bfa}
+.wxprev{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:.9rem;min-height:44px}
+.wxprev b{color:var(--ink)}.wxprev .sub{font-size:.82rem}
 .commtoggle{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.9rem;color:var(--ink)}.commtoggle input{width:20px;height:20px;accent-color:#a78bfa}
 .legend .mk-place::before{background:#d7362b}.legend .mk-fang::before{background:#2f9e5a}.legend .mk-biss::before{background:#e0a020}.legend .mk-null::before{background:#8a9699}
 
@@ -327,6 +329,7 @@ body.sheet-open{overflow:hidden}
         <label>Gewicht (kg)<input type="text" inputmode="decimal" id="fWeight" placeholder="z. B. 4,2"></label>
         <label>Länge (cm)<input type="text" inputmode="decimal" id="fLength" placeholder="z. B. 85"></label>
         <label class="full">Gewässer / Stelle<input type="text" id="fPlace"></label>
+        <div class="full wxprev" id="fWxPrev"></div>
         <div class="full posrow"><span class="sub" id="fPos"></span><button type="button" class="btn ghost" id="fGps">GPS-Position</button></div>
         <label>Köder / Methode<input type="text" id="fBait" placeholder="z. B. Gummifisch 10 cm"></label>
         <label>Tiefe (m)<input type="text" inputmode="decimal" id="fDepth"></label>
@@ -435,7 +438,7 @@ body.sheet-open{overflow:hidden}
       <button type="button" class="btn ghost" id="fCsv">CSV exportieren</button>
       <button type="button" class="btn ghost" id="fComm">Für Community exportieren</button>
       <button type="button" class="btn ghost" id="fBackup">Sicherung speichern</button>
-      <label class="btn ghost filebtn">Sicherung laden<input type="file" id="fImport" accept=".json,application/json" hidden></label>
+      <label class="btn ghost filebtn">Sicherung / CSV laden<input type="file" id="fImport" accept=".json,application/json,.csv,text/csv" hidden></label>
     </div>
     <p class="note">Wetter, Mond und Beißindex werden beim Speichern automatisch zum Zeitpunkt und Ort des Eintrags ergänzt (bis etwa 3 Monate rückwirkend). Die Einträge liegen nur auf diesem Gerät. Mach regelmäßig eine Sicherung.</p>
   </div>
@@ -1298,7 +1301,7 @@ function initMap(){
     e.stopPropagation();
     const lat=+b.dataset.lat,lng=+b.dataset.lng,act=b.dataset.mapact;
     if(act==='place'){map.closePopup();setPlace('Kartenpunkt '+lat.toFixed(3)+', '+lng.toFixed(3),lat,lng);}
-    else if(act==='catch'){map.closePopup();showTab('fang');if(fEl('fForm').hidden){endEdit();openForm();}fPos={lat,lng,src:'Karte'};showPos();$('fMsg').textContent='Fangposition aus der Karte übernommen.';$('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});}
+    else if(act==='catch'){map.closePopup();showTab('fang');if(fEl('fForm').hidden){endEdit();openForm();}fPos={lat,lng,src:'Karte'};showPos();schedulePreview();$('fMsg').textContent='Fangposition aus der Karte übernommen.';$('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});}
     else if(act==='edit'){map.closePopup();showTab('fang');startEdit(b.dataset.id);}
   });
   setTimeout(()=>map.invalidateSize(),300);
@@ -1408,7 +1411,7 @@ function initForm(){
 fEl('fGps').onclick=()=>{
   if(!navigator.geolocation){fEl('fMsg').textContent='GPS wird hier nicht unterstützt.';return;}
   fEl('fMsg').textContent='GPS-Position wird abgefragt …';
-  navigator.geolocation.getCurrentPosition(p=>{fPos={lat:p.coords.latitude,lng:p.coords.longitude,src:'GPS ±'+Math.round(p.coords.accuracy)+' m'};showPos();fEl('fMsg').textContent='';},
+  navigator.geolocation.getCurrentPosition(p=>{fPos={lat:p.coords.latitude,lng:p.coords.longitude,src:'GPS ±'+Math.round(p.coords.accuracy)+' m'};showPos();fEl('fMsg').textContent='';schedulePreview();},
     err=>{fEl('fMsg').textContent=geoError(err)+' Bis dahin gilt der Suchort.';},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 };
 function withContext(ctx,fn){
@@ -1434,10 +1437,7 @@ fEl('fSave').onclick=async()=>{
   const spName=spKey==='andere'?(fEl('fOther').value.trim()||'Andere'):SPECIES[spKey].name;
   const num=id=>{const v=parseFloat(String(fEl(id).value).replace(',','.'));return isFinite(v)?v:null;};
   fEl('fSave').disabled=true;m.textContent='Wetter und Mond werden ergänzt …';
-  let data=null;const key=fPos.lat.toFixed(3)+','+fPos.lng.toFixed(3);
-  if(wx&&wx.key===key&&t>=wx.t[3]&&t<=wx.t[wx.t.length-1])data=wx;
-  else if(coversT(wxHist,t)&&wxHist.key===key)data=wxHist;
-  else{try{data=await wxForTime(fPos.lat,fPos.lng,t,isSea()?WTYPE():false);}catch(_){data=null;}}
+  const data=await wxDataFor(fPos.lat,fPos.lng,t);
   const snap=withContext({state:{lat:fPos.lat,lng:fPos.lng,species:SPECIES[spKey]?spKey:state.species,date:dstr(t)},wx:data},()=>{
     const a=analyze(),s=a.score(t);
     return {index:SPECIES[spKey]?s.total:null,time:s.timeLabel,moon:phaseName(a.il.phase),illum:Math.round(a.il.fraction*100),W:s.W,prLabel:s.prLabel};
@@ -1476,6 +1476,7 @@ async function backfillWeather(){
       let data;try{data=await wxForTime(c.lat,c.lng,c.t,['ostsee','nordsee'].includes(c.water)?c.water:(isSea()?WTYPE():false));}catch(_){break;}
       const snap=withContext({state:{lat:c.lat,lng:c.lng,species:SPECIES[c.speciesKey]?c.speciesKey:state.species,date:dstr(c.t)},wx:data},()=>{
         const a=analyze(),s=a.score(c.t);return {index:SPECIES[c.speciesKey]?s.total:null,W:s.W,prLabel:s.prLabel,time:s.timeLabel};});
+      if(!c.moon){const il=moonIllum(new Date(c.t));c.moon=phaseName(il.phase);c.illum=Math.round(il.fraction*100);}
       if(snap.W){c.wx=wxRecord(snap.W,snap.prLabel);c.index=snap.index;c.daytime=snap.time;n++;}
       else if(c.t<Date.now()-7*dayMs)c.noWx=true;
     }
@@ -1582,7 +1583,39 @@ fEl('fClose').onclick=closeSheet;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!fEl('fSheet').hidden)closeSheet();});
 fEl('flSpecies').onchange=fEl('flResult').onchange=()=>{listLimit=30;renderCatches();};
 fEl('fMore').onclick=()=>{listLimit+=30;renderCatches();};
-function openForm(){fEl('fForm').hidden=false;fEl('fNew').hidden=true;}
+function openForm(){fEl('fForm').hidden=false;fEl('fNew').hidden=true;schedulePreview();}
+/* ---------- Wetter zum Fangzeitpunkt: automatisch beim Eintragen ---------- */
+const prevCache=new Map();
+const inData=(D,key,t)=>D&&D.key===key&&D.t&&D.t.length>3&&t>=D.t[3]&&t<=D.t[D.t.length-1];
+async function wxDataFor(lat,lng,t){
+  const key=(+lat).toFixed(3)+','+(+lng).toFixed(3);
+  if(inData(wx,key,t))return wx;
+  if(inData(wxHist,key,t))return wxHist;
+  for(const D of prevCache.values())if(inData(D,key,t))return D;
+  try{const D=await wxForTime(lat,lng,t,isSea()?WTYPE():false);prevCache.set(key+'|'+dstr(t),D);if(prevCache.size>6)prevCache.delete(prevCache.keys().next().value);return D;}
+  catch(_){return null;}
+}
+let prevTimer=null,prevSeq=0;
+function schedulePreview(){clearTimeout(prevTimer);prevTimer=setTimeout(previewWx,450);}
+async function previewWx(){
+  const box=fEl('fWxPrev');if(fEl('fForm').hidden)return;
+  const t=new Date(fEl('fTime').value).getTime();
+  if(!isFinite(t)){box.innerHTML='<span class="sub">Datum und Uhrzeit eingeben, dann erscheint hier das Wetter zum Fangzeitpunkt.</span>';return;}
+  if(t>Date.now()+36e5){box.innerHTML='<span class="sub">Der Zeitpunkt liegt in der Zukunft.</span>';return;}
+  const seq=++prevSeq;box.innerHTML='<span class="sub">Wetter zum Fangzeitpunkt wird geladen …</span>';
+  const data=await wxDataFor(fPos.lat,fPos.lng,t);if(seq!==prevSeq)return;
+  const spKey=fEl('fSpecies').value;
+  const s=withContext({state:{lat:fPos.lat,lng:fPos.lng,species:SPECIES[spKey]?spKey:state.species,date:dstr(t)},wx:data},()=>{const a=analyze(),r=a.score(t);return {r,moon:phaseName(a.il.phase),illum:Math.round(a.il.fraction*100)};});
+  const W=s.r.W;
+  if(!W){box.innerHTML=`<span class="sub">Für diesen Zeitpunkt sind keine Wetterdaten abrufbar${navigator.onLine?'':' (kein Netz, wird nach dem Speichern automatisch nachgeladen)'}. Mond: ${esc(s.moon)}, ${s.illum} %.</span>`;return;}
+  const src=W.wsrc==='manual'?'gemessen':W.wsrc==='pegel'?'Pegel':W.sst!=null?'Meer':'geschätzt';
+  box.innerHTML=`<b>Wetter am ${new Date(t).toLocaleString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</b><br>`+
+    `${r1(W.tmp)} °C · ${Math.round(W.p)} hPa ${esc(s.r.prLabel)} · Wind ${Math.round(W.ws)} km/h · Wolken ${Math.round(W.cc)} % · Feuchte ${Math.round(W.rh)} %`+
+    `<br>Wasser ${r1(W.t72)} °C (${src}) · ${esc(s.moon)} ${s.illum} %`+(SPECIES[spKey]?` · Index ${s.r.total} für ${esc(SPECIES[spKey].name)}`:'')+
+    `<br><span class="sub">Wird beim Speichern automatisch übernommen.</span>`;
+}
+fEl('fTime').addEventListener('change',schedulePreview);fEl('fTime').addEventListener('input',schedulePreview);
+fEl('fSpecies').addEventListener('change',schedulePreview);
 function closeForm(){fEl('fForm').hidden=true;fEl('fNew').hidden=false;}
 fEl('fNew').onclick=()=>{endEdit();openForm();fEl('fMsg').textContent='';fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});};
 let pendingDel=null,pendingTimer=null;
@@ -1613,7 +1646,7 @@ function startEdit(id){
   const s=v=>v==null?'':String(v).replace('.',',');
   fEl('fWeight').value=s(c.weight);fEl('fLength').value=s(c.length);fEl('fDepth').value=s(c.depth);
   fEl('fPlace').value=c.place||'';fEl('fBait').value=c.bait||'';fEl('fNote').value=c.note||'';
-  fPos={lat:c.lat,lng:c.lng,src:'gespeicherte Position'};showPos();
+  fPos={lat:c.lat,lng:c.lng,src:'gespeicherte Position'};showPos();schedulePreview();
   formPhoto=null;formPhotoRemoved=false;showFormPhoto(null);if(c.photo)photoGet(c.id).then(b=>{if(b&&editingId===c.id)showFormPhoto(b);});
   fEl('fSave').textContent='Änderungen speichern';fEl('fTitle').textContent='Fangbuch: Eintrag bearbeiten';
   fEl('fMsg').textContent='';
@@ -1697,7 +1730,9 @@ fEl('fBackup').onclick=async()=>{
 fEl('fImport').onchange=async e=>{
   const file=e.target.files[0];if(!file)return;
   const readText=f=>f.text?f.text():new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsText(f);});
-  try{const d=JSON.parse(await readText(file)),list=Array.isArray(d)?d:d.catches;if(!Array.isArray(list))throw 0;
+  const raw=await readText(file).catch(()=>null);
+  if(raw!=null&&(/\.csv$/i.test(file.name)||/^\ufeff?[^\n{\[]*;/.test(raw))){importCSV(raw);e.target.value='';return;}
+  try{const d=JSON.parse(raw),list=Array.isArray(d)?d:d.catches;if(!Array.isArray(list))throw 0;
     const ids=new Set(catches.map(c=>c.id));let n=0;const N=v=>v==null||v===''||!isFinite(+v)?null:+v,S=v=>v==null?'':String(v).slice(0,500);
     list.forEach(c=>{const cid=c&&c.id!=null?String(c.id).replace(/[^a-z0-9]/gi,''):'';if(cid&&isFinite(c.t)&&!ids.has(cid)){ids.add(cid);
       const w=c.wx&&typeof c.wx==='object'?{p:N(c.wx.p),dp:N(c.wx.dp),trend:S(c.wx.trend),tmp:N(c.wx.tmp),t72:N(c.wx.t72),rh:N(c.wx.rh),cc:N(c.wx.cc),ws:N(c.wx.ws),wg:N(c.wx.wg),pr:N(c.wx.pr)}:null;
@@ -1709,6 +1744,38 @@ fEl('fImport').onchange=async e=>{
   catch(_){fEl('fMsg').textContent='Datei konnte nicht gelesen werden.';}
   e.target.value='';
 };
+function importCSV(txt){
+  const rows=parseCSV(txt);if(rows.length<2){fEl('fMsg').textContent='CSV enthält keine Einträge.';return;}
+  const H=rows[0].map(x=>x.trim().toLowerCase()),col=(...names)=>{for(const n of names){const i=H.indexOf(n.toLowerCase());if(i>=0)return i;}return -1;};
+  const iD=col('Datum'),iU=col('Uhrzeit','Zeit'),iS=col('Stunde'),iR=col('Ergebnis'),iF=col('Fischart','Art'),iG=col('Gewicht kg','Gewicht'),iL=col('Länge cm','Laenge cm','Größe cm'),
+        iW=col('Gewässer','Ort','Gewaesser'),iLa=col('Breite','Lat','Breitengrad'),iLo=col('Länge','Lng','Lon','Längengrad'),iK=col('Köder','Koeder','Methode'),iT=col('Tiefe m','Tiefe'),iN=col('Notiz','Bemerkung');
+  if(iD<0||iF<0){fEl('fMsg').textContent='CSV braucht mindestens die Spalten „Datum“ und „Fischart“.';return;}
+  const num=v=>{if(v==null||String(v).trim()==='')return null;const x=parseFloat(String(v).replace(',','.'));return isFinite(x)?x:null;};
+  const S=v=>v==null?'':String(v).trim().slice(0,300);
+  const keyOf=c=>dstr(c.t)+'|'+new Date(c.t).getHours()+'|'+c.species+'|'+(c.lat==null?'':(+c.lat).toFixed(2));
+  const have=new Set(catches.map(keyOf));let n=0,noPos=0,bad=0;
+  const nameToKey=n=>{const s=n.toLowerCase();return Object.keys(SPECIES).find(k=>SPECIES[k].name.toLowerCase()===s)||'andere';};
+  for(const r of rows.slice(1)){
+    const ds=S(r[iD]);let y,m,d;
+    let mm=ds.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);if(mm){d=+mm[1];m=+mm[2];y=+mm[3];if(y<100)y+=2000;}
+    else if((mm=ds.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))){y=+mm[1];m=+mm[2];d=+mm[3];}
+    else{bad++;continue;}
+    let hh=12,mi=0;const tu=iU>=0?S(r[iU]).match(/^(\d{1,2})[:.](\d{2})/):null;
+    if(tu){hh=+tu[1];mi=+tu[2];}else if(iS>=0&&S(r[iS])!==''){hh=parseInt(r[iS],10)||12;mi=30;}
+    const t=new Date(y,m-1,d,hh,mi).getTime();if(!isFinite(t)){bad++;continue;}
+    const lat=iLa>=0?num(r[iLa]):null,lng=iLo>=0&&iLo!==iL?num(r[iLo]):null;
+    const species=S(r[iF])||'Unbekannt',res=S(r[iR]).toLowerCase();
+    const c={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),t,result:['fang','biss','null'].includes(res)?res:(res.startsWith('null')?'null':res.startsWith('biss')?'biss':'fang'),
+      species,speciesKey:nameToKey(species),water:WTYPE(),weight:iG>=0?num(r[iG]):null,length:iL>=0?num(r[iL]):null,place:iW>=0?S(r[iW]):'',
+      lat:lat!=null&&Math.abs(lat)<=90?lat:null,lng:lng!=null&&Math.abs(lng)<=180?lng:null,bait:iK>=0?S(r[iK]):'',depth:iT>=0?num(r[iT]):null,note:iN>=0?S(r[iN]):'',
+      index:null,daytime:'',moon:'',illum:null,wx:null,photo:false};
+    if(c.lat==null||c.lng==null){c.lat=null;c.lng=null;noPos++;}
+    if(have.has(keyOf(c)))continue;have.add(keyOf(c));catches.push(c);n++;
+  }
+  catches.sort((a,b)=>b.t-a.t);saveCatches();renderCatches();
+  fEl('fMsg').textContent=`${n} Einträge aus CSV übernommen.`+(noPos?` ${noPos} ohne Koordinaten: Wetter dafür nicht möglich, Position über „Bearbeiten“ nachtragen.`:'')+(bad?` ${bad} Zeilen mit unlesbarem Datum übersprungen.`:'')+(n-noPos>0?' Wetter wird jetzt automatisch ergänzt …':'');
+  backfillWeather();
+}
 initForm();renderCatches();
 
 (function(){
