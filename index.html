@@ -147,8 +147,16 @@ svg.chart{display:block;width:100%;height:auto;touch-action:pan-y}
 .legend .lg-major::before{background:var(--bobber)}.legend .lg-minor::before{background:var(--reed)}.legend .lg-sun::before{background:var(--sun)}
 .maplegend span::before{border-radius:50%;width:10px;height:10px}
 .legend .mk-comm::before{background:#a78bfa}
+.fplace label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.posbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.posbtns .btn{min-height:42px;font-size:.92rem}
+.posinfo{margin-top:8px;font-size:.88rem;padding:8px 10px;border-radius:12px;background:var(--bg2);border:1px solid var(--line)}.posinfo.warn{border-color:var(--mid);color:#ffd38a}
+.pickbar{position:sticky;top:0;z-index:5;margin:-4px 0 10px;padding:10px 12px;border-radius:14px;background:rgba(255,181,71,.16);color:#ffd38a;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.multi label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.multi .chiprow{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.multi .chiprow button{background:var(--chip);color:var(--ink);border:0;border-radius:999px;padding:6px 12px;font-size:.88rem;cursor:pointer}
 .wxprev{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:.9rem;min-height:44px}
 .wxprev b{color:var(--ink)}.wxprev .sub{font-size:.82rem}
+.calbadge{display:inline-block;margin-bottom:4px;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(167,139,250,.18);color:#c9b8ff}
 .commtoggle{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.9rem;color:var(--ink)}.commtoggle input{width:20px;height:20px;accent-color:#a78bfa}
 .legend .mk-place::before{background:#d7362b}.legend .mk-fang::before{background:#2f9e5a}.legend .mk-biss::before{background:#e0a020}.legend .mk-null::before{background:#8a9699}
 
@@ -269,7 +277,7 @@ body.sheet-open{overflow:hidden}
         <div class="num" id="score">–</div>
       </div>
       <div class="gside right"><div class="glabel">Wasser</div><div class="gval" id="gRight">–</div></div>
-      <div class="gfoot"><div class="verdict" id="verdict"></div><div class="sub" id="scoreSub"></div>
+      <div class="gfoot"><div class="calbadge" id="calBadge" hidden>an deine Fänge angepasst</div><div class="verdict" id="verdict"></div><div class="sub" id="scoreSub"></div>
         <button type="button" class="infobtn" id="infoBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg> Wie entsteht der Wert?</button></div>
     </div>
 
@@ -320,19 +328,33 @@ body.sheet-open{overflow:hidden}
     <div class="card" id="fangbuch">
       <div class="cardhead"><h2 id="fTitle">Fangbuch</h2></div>
       <div class="fsum" id="fSummary"></div>
-      <div class="frow"><button type="button" class="btn" id="fNew">+ Fang eintragen</button><button type="button" class="btn ghost" id="fOpen">Alle Einträge</button></div>
+      <div class="frow"><button type="button" class="btn" id="fNew">+ Fang eintragen</button><button type="button" class="btn ghost" id="fNull">✕ Nullnummer</button></div>
+      <div class="frow"><button type="button" class="btn ghost" id="fOpen">Alle Einträge</button></div>
       <div class="form" id="fForm" hidden>
         <label>Ergebnis<select id="fResult"><option value="fang">Fang</option><option value="biss">Biss ohne Fang</option><option value="null">Nullnummer</option></select></label>
         <label>Fischart<select id="fSpecies"></select></label>
         <label class="full" id="fOtherWrap" hidden>Andere Fischart<input type="text" id="fOther" placeholder="z. B. Döbel"></label>
-        <label class="full">Datum und Uhrzeit<input type="datetime-local" id="fTime"></label>
+        <label class="full" id="fTimeLbl">Datum und Uhrzeit<input type="datetime-local" id="fTime"></label>
+        <div class="full multi" id="fMultiWrap" hidden>
+          <label for="fMultiDate">Gleiche Nullnummer auch an weiteren Tagen (rückwirkend)</label>
+          <div class="search"><input type="date" id="fMultiDate"><button type="button" class="btn ghost" id="fMultiAdd">Tag hinzufügen</button></div>
+          <div class="chiprow" id="fMultiList"></div>
+          <small class="sub">Gleiche Uhrzeit, Fangstelle, Fischart und Angeldauer. Das Wetter wird für jeden Tag einzeln ergänzt.</small>
+        </div>
         <label>Gewicht (kg)<input type="text" inputmode="decimal" id="fWeight" placeholder="z. B. 4,2"></label>
         <label>Länge (cm)<input type="text" inputmode="decimal" id="fLength" placeholder="z. B. 85"></label>
-        <label class="full">Gewässer / Stelle<input type="text" id="fPlace"></label>
+
         <div class="full wxprev" id="fWxPrev"></div>
-        <div class="full posrow"><span class="sub" id="fPos"></span><button type="button" class="btn ghost" id="fGps">GPS-Position</button></div>
+        <div class="full fplace">
+          <label for="fPlace">Fangstelle</label>
+          <div class="search"><input type="text" id="fPlace" placeholder="z. B. Tegeler See, Havel Spandau" autocomplete="off"><button type="button" class="btn" id="fFind">Suchen</button></div>
+          <ul class="hits" id="fHits"></ul>
+          <div class="posbtns"><button type="button" class="btn ghost" id="fPick">🗺️ Auf Karte wählen</button><button type="button" class="btn ghost" id="fGps">📍 Hier (GPS)</button></div>
+          <div class="posinfo" id="fPos"></div>
+        </div>
         <label>Köder / Methode<input type="text" id="fBait" placeholder="z. B. Gummifisch 10 cm"></label>
         <label>Tiefe (m)<input type="text" inputmode="decimal" id="fDepth"></label>
+        <label class="full">Angeldauer bis zum Fang bzw. insgesamt (Std.)<input type="text" inputmode="decimal" id="fHours" placeholder="z. B. 2,5"></label>
         <label class="full">Notiz<textarea id="fNote" rows="2"></textarea></label>
         <div class="full photorow"><label class="btn ghost filebtn">📷 Foto<input type="file" id="fPhoto" accept="image/*" hidden></label><img id="fPhotoPrev" alt="" hidden><button type="button" class="infobtn" id="fPhotoDel" hidden>Foto entfernen</button><small class="sub">Bleibt nur auf diesem Gerät, ohne Standortdaten im Bild.</small></div>
         <button type="button" class="btn full" id="fSave">Eintrag speichern</button>
@@ -346,6 +368,7 @@ body.sheet-open{overflow:hidden}
   <section class="tab" id="tab-map" hidden>
     <div class="card" id="kartebox">
       <div class="cardhead"><h2>Karte</h2><button type="button" class="infobtn" id="mapFit">Alle Fänge</button></div>
+      <div class="pickbar" id="pickBar" hidden><span>Tippe auf die Stelle, an der du gefangen hast.</span><button type="button" class="roundbtn" id="pickCancel">Abbrechen</button></div>
       <div id="map" role="application" aria-label="Karte mit Standort und Fängen"></div>
       <div class="legend maplegend"><span class="mk-place">Standort</span><span class="mk-fang">Fang</span><span class="mk-biss">Biss</span><span class="mk-null">Nullnummer</span><span class="mk-comm">Community</span></div>
       <label class="commtoggle" id="mapCommWrap" hidden><input type="checkbox" id="mapComm" checked> Community-Fänge anzeigen (<span id="mapCommN">0</span>)</label>
@@ -415,6 +438,8 @@ body.sheet-open{overflow:hidden}
     <p class="note" id="iGate"></p>
     <h3 id="iProfTitle">Profil</h3>
     <table class="factors" id="iProfile"></table>
+    <h3 id="calTitle">An deine Fänge angepasst</h3>
+    <div id="calBody"></div>
     <h3>So funktioniert der Beißindex</h3>
     <p class="note">Der Wert setzt sich aus Bausteinen zusammen, die nach Studienlage unterschiedlich stark gewichtet sind. Am meisten zählt die <b>Tageszeit</b> (bis 30 Punkte), bewertet nach dem Aktivitätsmuster der Fischart: Dämmerung, Tag oder Nacht. Danach kommt die <b>Wassertemperatur</b> (bis 25 Punkte). Kleinere Bausteine sind <b>Mondphase</b> (bis 10, beim Aal Neumond statt Vollmond), <b>Mond im Zenit oder Nadir</b> (bis 8) und <b>Mondauf- oder -untergang</b> (bis 4), außerdem <b>Luftdruck</b> (±5) und <b>Himmel und Wind</b>. Abzüge gibt es für <b>Wochenenden und Feiertage</b> (mehr Angler, scheuere Fische) und für Arten <b>außerhalb ihrer Saison</b>.</p>
     <p class="note">Danach greift der <b>Temperatur-Faktor</b>: Liegt die Wassertemperatur im Wohlfühlbereich der Art, bleibt der Wert unverändert (× 1). Je weiter sie außerhalb liegt, desto stärker wird er gedämpft, bis auf ein Viertel (× 0,25). Ein Wels bei 10 °C kann so auch zur besten Nachtzeit keinen guten Wert erreichen.</p>
@@ -555,6 +580,17 @@ Object.assign(SPECIES,{
   barbe:{name:'Barbe',t:[10,15,23,26],act:{dusk:1,day:.5,night:.9},sky:{over:3,sun:0},moon:3,
     info:'Bodenfisch in strömenden Flüssen, oft in der Dämmerung und nachts.'}
 });
+/* ---------- Kalibrierung je Fischart ----------
+   Ausgangspunkt sind die Studiengewichte. Aus den Fangbuch-Einträgen einer Art (Fang ja/nein, Angeldauer)
+   wird je Baustein ein Faktor geschätzt: Modell P(Fang)=1-exp(-exp(a+Σb·x)·Stunden/2) mit Vorwissen b~N(b0,0,5²).
+   Wenige Daten -> Faktoren bleiben nahe 1; viele Daten -> Daten bestimmen. Faktoren begrenzt auf 0,25–3. */
+const CAL_KEYS=['temp','phase','major','minor','pressure','sky','busy'];
+const ACT_KEYS=['dusk','day','night'],ACT_TXT={dusk:'Aktivität Dämmerung',day:'Aktivität Tag',night:'Aktivität Nacht'};
+const CAL_MAX={dusk:30,temp:25,phase:10,major:8,minor:4,pressure:5,sky:10,busy:10};
+const CAL_TXT={dusk:'Tageszeit',temp:'Wassertemperatur',phase:'Mondphase',major:'Mond Zenit/Nadir',minor:'Mondauf-/untergang',pressure:'Luftdruck',sky:'Himmel & Wind',busy:'Angeldruck (Wochenende)'};
+let calibs={};try{calibs=JSON.parse(localStorage.getItem('beissindex:calib')||'{}');}catch(_){calibs={};}
+const calibFor=k=>{const c=calibs[k];return c&&c.on&&c.m?c:null;};
+function saveCalibs(){try{localStorage.setItem('beissindex:calib',JSON.stringify(calibs));}catch(_){}}
 /* ---------- Schonzeiten und Mindestmaße (Handangel) ----------
    Quelle: Tabellen auf fischapp.com (Stand 2026) zu Berliner LFischO und Brandenburger BbgFischO.
    s: Schonzeit [von, bis] als MM-TT, all: ganzjährig geschont, m: Mindestmaß in cm. Ohne Gewähr. */
@@ -786,16 +822,20 @@ function analyze(){
   function score(t){
     const major=near(ev.transit.concat(ev.nadir),t,60,120),minor=near(ev.mrise.concat(ev.mset),t,30,75),dusk=near(ev.srise.concat(ev.sset),t,60,150);
     const isDay=sunAlt(new Date(t),state.lat,state.lng)>0;
-    const timeF=Math.max(dusk*sp.act.dusk,isDay?sp.act.day:sp.act.night);
+    const calA=calibFor(state.species),act=calA&&calA.act?calA.act:sp.act;
+    const tbr=dusk*sp.act.dusk>=(isDay?sp.act.day:sp.act.night)?'dusk':(isDay?'day':'night');
+    const timeF=Math.max(dusk*act.dusk,isDay?act.day:act.night);
     const timeLabel=dusk>.5?'Dämmerung':isDay?'Tag':'Nacht';
     const W=wxAt(t),pr=W?pressureRate(W.dp):['keine Daten',0],sk=W?skyRate(W,sp,isDay):['keine Daten',0],tp=W?tempRate(W,sp):['keine Daten',0,null];
     const busy=pressureDay(t);
     const inSeason=!sp.season||sp.season.includes(new Date(t).getMonth()+1);
     const parts={base:10,dusk:30*timeF,temp:tp[1],phase:phaseBonus,major:8*major,minor:4*minor,pressure:pr[1],sky:sk[1],busy:busy?-10:0,season:inSeason?0:-25};
+    const cal=calibFor(state.species);
+    if(cal){for(const k of CAL_KEYS)parts[k]*=cal.m[k];}
     const raw=Math.max(0,Math.min(100,Object.values(parts).reduce((a,b)=>a+b,0)));
     const gate=tp[2]==null?1:0.25+0.75*tp[2];
     const total=Math.round(raw*gate);
-    return {total,raw:Math.round(raw),gate,parts,W,prLabel:pr[0],skyLabel:sk[0],tempLabel:tp[0],busy,timeLabel};
+    return {total,raw:Math.round(raw),gate,parts,W,prLabel:pr[0],skyLabel:sk[0],tempLabel:tp[0],busy,timeLabel,tbr};
   }
   const series=[];for(let t=ds;t<=de;t+=10*6e4)series.push({t,...score(t)});
   const win=(list,half)=>list.filter(T=>T>=ds&&T<de).map(T=>[T-half*6e4,T+half*6e4]).sort((x,y)=>x[0]-y[0]);
@@ -934,6 +974,7 @@ function renderCards(shown,t,isToday,bl){
    document.querySelector('.gauge').style.setProperty('--glow',g[1]);}
   $('score').style.color=bl?'var(--bad)':'var(--ink)';
   if(!bl)$('verdict').textContent=VERB(shown.total);
+  $('calBadge').hidden=!calibFor(state.species);
   $('gLeft').innerHTML=bl?'–':(A.wins&&A.wins.length?A.wins.map(s=>`${fmt(s.a)}–${fmt(s.b+10*6e4)}`).join('<br>'):'–');
   const W=shown.W;
   $('gRight').innerHTML=W?`${r1(W.t72)} °C<br><small class="sub">${W.sst!=null&&W.wsrc!=='manual'&&W.wsrc!=='pegel'?'Meer':WSRC[W.wsrc]||'geschätzt'}</small>`:'–';
@@ -965,6 +1006,7 @@ function renderSunMoon(){
 }
 /* ---------- Tabs und Ort-Auswahl ---------- */
 function showTab(name){
+  if(name!=='map'&&typeof pickMode!=='undefined'&&pickMode)endPick();
   document.querySelectorAll('.tab').forEach(s=>s.hidden=s.id!=='tab-'+name);
   document.querySelectorAll('.tabbar button').forEach(b=>{if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   document.querySelector('.days').hidden=name!=='prog';
@@ -1290,6 +1332,9 @@ function initMap(){
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
   catchLayer=L.layerGroup().addTo(map);
   map.on('click',e=>{
+    if(pickMode){const {lat,lng}=e.latlng;fPos={lat,lng,src:'Karte'};endPick();showTab('fang');showPos();schedulePreview();
+      if(!fEl('fPlace').value.trim()||fEl('fPlace').value===state.place.replace(/^📍\s*/,''))reverseName(lat,lng).then(r=>{if(r&&r.name)fEl('fPlace').value=r.name;});
+      fEl('fMsg').textContent='Fangstelle auf der Karte gesetzt.';setTimeout(()=>fEl('fForm').scrollIntoView({behavior:'smooth',block:'center'}),80);return;}
     const {lat,lng}=e.latlng;
     clickPopup=L.popup().setLatLng(e.latlng).setContent(
       `<b>${lat.toFixed(4)}, ${lng.toFixed(4)}</b>
@@ -1391,8 +1436,27 @@ function saveCatches(){try{localStorage.setItem(CKEY,JSON.stringify(catches));re
 const fEl=id=>$(id);
 let fPos={lat:state.lat,lng:state.lng,src:'Suchort'};
 function localInput(t){const d=new Date(t-new Date(t).getTimezoneOffset()*6e4);return d.toISOString().slice(0,16);}
+async function formFind(){
+  const q=fEl('fPlace').value.trim(),box=fEl('fHits');if(!q){box.innerHTML='';return;}
+  box.innerHTML='<li class="sub">Suche …</li>';
+  const all=localHits(q).concat((await geocode(q))||[]).slice(0,6);
+  if(!all.length){box.innerHTML='<li class="sub">Nichts gefunden. Anders schreiben oder „Auf Karte wählen“.</li>';return;}
+  box.innerHTML=all.map((p,i)=>`<li><button type="button" data-fi="${i}">${esc(p.name)}<small>${(+p.lat).toFixed(3)}, ${(+p.lng).toFixed(3)}</small></button></li>`).join('');
+  box.onclick=e=>{const b=e.target.closest('[data-fi]');if(!b)return;const p=all[+b.dataset.fi];
+    fPos={lat:+p.lat,lng:+p.lng,src:'Suche'};fEl('fPlace').value=p.name.split(',')[0];box.innerHTML='';showPos();schedulePreview();};
+}
+let pickMode=false;
+function startPick(){pickMode=true;showTab('map');$('pickBar').hidden=false;
+  setTimeout(()=>{if(map){map.setView([fPos.lat,fPos.lng],Math.max(map.getZoom(),14));}},120);}
+function endPick(){pickMode=false;$('pickBar').hidden=true;}
 function syncFormPlace(){fPos={lat:state.lat,lng:state.lng,src:'Suchort'};fEl('fPlace').value=state.place.replace(/^📍\s*/,'');showPos();}
-function showPos(){fEl('fPos').textContent=`${fPos.lat.toFixed(5)}, ${fPos.lng.toFixed(5)} (${fPos.src})`;}
+const SRC_TXT={'Suchort':'vom gewählten Ort oben übernommen','Karte':'auf der Karte gewählt','Suche':'über die Suche gefunden','gespeicherte Position':'gespeicherte Position'};
+function showPos(){
+  const el=fEl('fPos'),src=SRC_TXT[fPos.src]||fPos.src;
+  el.innerHTML=`📍 ${fPos.lat.toFixed(4)}, ${fPos.lng.toFixed(4)} <span class="sub">(${esc(src)})</span>`+
+    (fPos.src==='Suchort'?'<br><span class="sub">Hast du woanders gefangen? Stelle oben suchen, auf der Karte wählen oder GPS nutzen.</span>':'');
+  el.className='posinfo'+(fPos.src==='Suchort'?' warn':'');
+}
 function fillSpeciesSelect(){
   const sel=fEl('fSpecies'),cur=sel.value,W=WATERS[WTYPE()],used=new Set();
   const opt=k=>{used.add(k);return `<option value="${k}">${SPECIES[k].name}</option>`;};
@@ -1408,6 +1472,10 @@ function initForm(){
   fEl('fTime').value=localInput(Date.now());
   syncFormPlace();
 }
+fEl('fFind').onclick=formFind;
+fEl('fPlace').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();formFind();}});
+fEl('fPick').onclick=startPick;
+$('pickCancel').onclick=()=>{endPick();showTab('fang');};
 fEl('fGps').onclick=()=>{
   if(!navigator.geolocation){fEl('fMsg').textContent='GPS wird hier nicht unterstützt.';return;}
   fEl('fMsg').textContent='GPS-Position wird abgefragt …';
@@ -1421,7 +1489,9 @@ function withContext(ctx,fn){
 }
 let editingId=null,confirmBanned=false;
 fEl('fSave').onclick=async()=>{
-  const m=fEl('fMsg'),t=new Date(fEl('fTime').value).getTime();
+  const m=fEl('fMsg');let t=new Date(fEl('fTime').value).getTime();
+  // Nullnummer: Bedingungen zur Mitte der Angelzeit bewerten
+  {const hh=parseFloat(String(fEl('fHours').value).replace(',','.'));if(isFinite(t)&&fEl('fResult').value==='null'&&!editingId&&isFinite(hh)&&hh>0)t=Math.min(Date.now(),t+Math.min(hh,12)*18e5);}
   if(!isFinite(t)){m.textContent='Datum und Uhrzeit fehlen.';return;}
   if(t>Date.now()+36e5){m.textContent='Der Zeitpunkt liegt in der Zukunft.';return;}
   const spKey=fEl('fSpecies').value;
@@ -1445,7 +1515,7 @@ fEl('fSave').onclick=async()=>{
   const W=snap.W;
   const e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t,result:fEl('fResult').value,species:spName,speciesKey:spKey,water:WTYPE(),
     weight:num('fWeight'),length:num('fLength'),place:fEl('fPlace').value.trim(),lat:+fPos.lat.toFixed(5),lng:+fPos.lng.toFixed(5),
-    bait:fEl('fBait').value.trim(),depth:num('fDepth'),note:fEl('fNote').value.trim(),index:snap.index,daytime:snap.time,moon:snap.moon,illum:snap.illum,
+    bait:fEl('fBait').value.trim(),depth:num('fDepth'),hours:num('fHours'),note:fEl('fNote').value.trim(),index:snap.index,daytime:snap.time,moon:snap.moon,illum:snap.illum,
     wx:W?wxRecord(W,snap.prLabel):null};
   if(editingId){
     const old=catches.find(c=>c.id===editingId);
@@ -1457,10 +1527,23 @@ fEl('fSave').onclick=async()=>{
   else if(formPhotoRemoved){await photoDel(e.id);e.photo=false;thumbURLs.delete(e.id);}
   catches=catches.map(c=>c.id===e.id?e:c);
   catches.sort((a,b)=>b.t-a.t);
+  let extra=0;
+  if(!editingId&&e.result==='null'&&multiDates.length){
+    const base=new Date(e.t),keyOf=c=>dstr(c.t)+'|'+new Date(c.t).getHours()+'|'+c.species;
+    const have=new Set(catches.map(keyOf));
+    for(const d of multiDates){
+      const [y,mo,da]=d.split('-').map(Number);const t2=new Date(y,mo-1,da,base.getHours(),base.getMinutes()).getTime();
+      const c2={...e,id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),t:t2,wx:null,index:null,daytime:'',moon:'',illum:null,photo:false,noWx:false};
+      if(have.has(keyOf(c2)))continue;have.add(keyOf(c2));catches.push(c2);extra++;
+    }
+    catches.sort((a,b)=>b.t-a.t);
+  }
+  multiDates=[];
   const wasEdit=!!editingId;endEdit();closeForm();
   fEl('fSave').disabled=false;
   if(!saveCatches()){m.textContent='Speichern im Browser fehlgeschlagen. Bitte Sicherung exportieren.';}
   else m.textContent=(wasEdit?'Änderung gespeichert':'Gespeichert')+(e.wx?', inklusive Wetter.':(navigator.onLine?'. Wetterdaten waren nicht verfügbar.':'. Kein Netz: Das Wetter wird automatisch nachgeladen, sobald wieder Empfang da ist.'));
+  if(extra){m.textContent+=` Dazu ${extra} weitere Nullnummern angelegt, Wetter wird ergänzt …`;backfillWeather();}
   renderCatches();
 };
 const pastDaysFor=t=>Math.min(92,Math.max(30,Math.ceil((Date.now()-t)/dayMs)+30));
@@ -1522,7 +1605,7 @@ function renderCatches(){
       <div class="d">${new Date(c.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${esc(c.place||'ohne Ortsangabe')}</div>
       <div class="d">${c.index!=null?'Index '+(+c.index)+' · ':''}${esc(c.daytime)} · ${esc(c.moon)} ${c.illum!=null?(+c.illum)+' %':''}</div>
       <div class="d">${w}</div>
-      ${c.bait||c.depth!=null||c.note?`<div class="d">${esc([c.bait,c.depth!=null?n1(c.depth)+' m Tiefe':'',c.note].filter(Boolean).join(' · '))}</div>`:''}
+      ${c.bait||c.depth!=null||c.hours!=null||c.note?`<div class="d">${esc([c.bait,c.depth!=null?n1(c.depth)+' m Tiefe':'',c.hours!=null?n1(c.hours)+' Std. geangelt':'',c.note].filter(Boolean).join(' · '))}</div>`:''}
       <div class="a">${map}<button type="button" data-edit="${esc(c.id)}">Bearbeiten</button><button type="button" data-del="${esc(c.id)}">${pendingDel===c.id?'Wirklich löschen?':'Löschen'}</button></div></li>`;
   }).join('')||'<li class="d">Keine Einträge für diesen Filter.</li>';
   fillThumbs();
@@ -1548,6 +1631,86 @@ function renderEval(list){
     tbl('Nach Wassertemperatur',by(c=>c.wx?tb(c.wx.t72):null))+tbl('Nach Drucktendenz',by(c=>c.wx?c.wx.trend:null))+
     tbl('Nach Köder (häufigste)',topB);
 }
+/* Merkmale eines Eintrags aus denselben Bausteinen wie der Index (ohne Kalibrierung) */
+const featCache=new Map();
+function entryFeatures(c){
+  const sk=c.speciesKey&&SPECIES[c.speciesKey]?c.speciesKey:null;if(!sk||c.lat==null||!isFinite(c.lat)||!isFinite(c.t))return null;
+  const ck=(c.id||c.t)+'|'+sk+'|'+(c.wx?1:0);if(featCache.has(ck))return featCache.get(ck);
+  const sp=SPECIES[sk];
+  const parts=withContext({state:{lat:+c.lat,lng:+c.lng,species:sk,date:dstr(c.t)},wx:null},()=>{
+    const save=calibs[sk];if(save)calibs[sk]={...save,on:false};
+    try{const s=analyze().score(c.t);s.parts.tbr=s.tbr;return s.parts;}finally{if(save)calibs[sk]=save;}
+  });
+  if(c.wx&&c.wx.t72!=null){
+    const isDay=sunAlt(new Date(c.t),+c.lat,+c.lng)>0;
+    const W={t72:c.wx.t72,dt:null,wsrc:'est',p:c.wx.p,dp:c.wx.dp!=null?c.wx.dp:({'stark steigend':2.5,'leicht steigend':1,'stabil':0,'leicht fallend':-1,'stark fallend':-2.5}[c.wx.trend]??0),
+      cc:c.wx.cc??50,ws:c.wx.ws??8,wg:c.wx.wg??15,pr:c.wx.pr??0};
+    parts.temp=tempRate(W,sp)[1];parts.pressure=pressureRate(W.dp)[1];parts.sky=skyRate(W,sp,isDay)[1];
+  }else{parts.temp=null;}
+  const x={};for(const k of CAL_KEYS)x[k]=parts[k]==null?null:parts[k]/CAL_MAX[k];
+  const z={dusk:0,day:0,night:0};z[parts.tbr]=1;
+  const f={x,z,y:c.result==='fang'?1:0,h:c.hours!=null&&c.hours>0?Math.min(c.hours,24):null};
+  featCache.set(ck,f);return f;
+}
+function fitCalib(rows,sp){
+  // MAP-Schätzung mit Gradientenanstieg. Vorwissen: Bausteine b0 = 0,09·Maximalpunkte, Tageszeit c0 = 2,7·Aktivität der Art
+  const b0={},S=0.5,c0={},AK=2.7;for(const k of CAL_KEYS)b0[k]=0.09*CAL_MAX[k];for(const k of ACT_KEYS)c0[k]=AK*sp.act[k];
+  const b={...b0},cc={...c0};let a=Math.log(-Math.log(1-Math.max(0.05,Math.min(0.95,rows.filter(r=>r.y).length/rows.length))));
+  const lr=0.05;
+  for(let it=0;it<1500;it++){
+    let ga=0;const gb={},gc={};for(const k of CAL_KEYS)gb[k]=-(b[k]-b0[k])/(S*S);for(const k of ACT_KEYS)gc[k]=-(cc[k]-c0[k])/(S*S);
+    for(const r of rows){
+      let eta=a;for(const k of CAL_KEYS)eta+=b[k]*(r.x[k]||0);for(const k of ACT_KEYS)eta+=cc[k]*r.z[k];
+      const mu=Math.exp(Math.max(-20,Math.min(5,eta)))*(r.h?r.h/2:1);
+      const d=r.y?mu*Math.exp(-mu)/Math.max(1e-9,1-Math.exp(-mu)):-mu;
+      ga+=d;for(const k of CAL_KEYS)gb[k]+=d*(r.x[k]||0);for(const k of ACT_KEYS)gc[k]+=d*r.z[k];
+    }
+    a+=lr*ga/rows.length;for(const k of CAL_KEYS)b[k]+=lr*gb[k]/rows.length;for(const k of ACT_KEYS)cc[k]+=lr*gc[k]/rows.length;
+  }
+  // Tageszeit: relativ zur besten Zeit, damit die Aktivität 0–1 bleibt
+  const top=Math.max(...ACT_KEYS.map(k=>cc[k])),act={};
+  for(const k of ACT_KEYS)act[k]=Math.max(0,Math.min(1,1-(top-cc[k])/AK));
+  const m={};for(const k of CAL_KEYS)m[k]=Math.max(0.25,Math.min(3,b[k]/b0[k]));
+  return {a,b,m,act};
+}
+function quality(rows,weights){
+  // Fangquote im oberen gegenüber unteren Drittel der Bewertung (gleiche Daten, daher optimistisch)
+  const sc=rows.map(r=>({y:r.y,s:CAL_KEYS.reduce((s,k)=>s+(r.x[k]||0)*CAL_MAX[k]*(weights?weights.m[k]:1),0)+30*ACT_KEYS.reduce((s,k)=>s+r.z[k]*(weights?weights.act[k]:r.act[k]),0)})).sort((p,q)=>p.s-q.s);
+  const n=Math.floor(sc.length/3);if(n<3)return null;
+  const rate=a=>Math.round(a.reduce((s,r)=>s+r.y,0)/a.length*100);
+  return {lo:rate(sc.slice(0,n)),hi:rate(sc.slice(-n))};
+}
+function runCalib(sk,withComm){
+  const src=catches.concat(withComm&&typeof community!=='undefined'?communityOnly():[]).filter(c=>c.speciesKey===sk||(SPECIES[sk]&&c.species===SPECIES[sk].name));
+  const rows=src.map(c=>entryFeatures({...c,speciesKey:sk})).filter(Boolean);
+  const nF=rows.filter(r=>r.y).length,n0=rows.length-nF,nH=rows.filter(r=>r.h).length;
+  if(rows.length<30||nF<5||n0<5)return {err:`Zu wenig Daten für ${SPECIES[sk].name}: ${rows.length} verwertbare Einträge (${nF} mit Fang, ${n0} ohne). Nötig sind mindestens 30, davon je 5 mit und ohne Fang. Einträge brauchen eine Position.`};
+  for(const r of rows){r.act=SPECIES[sk].act;for(const k of CAL_KEYS)if(r.x[k]==null)r.x[k]=0;}
+  const fit=fitCalib(rows,SPECIES[sk]);
+  return {on:true,m:fit.m,act:fit.act,n:rows.length,nF,n0,nH,withComm:!!withComm,date:Date.now(),qStudy:quality(rows,null),qCal:quality(rows,fit)};
+}
+function renderCalib(){
+  const sk=state.species,sp=SPECIES[sk],c=calibs[sk],box=$('calBody');if(!box)return;
+  const mine=catches.filter(e=>e.speciesKey===sk||e.species===sp.name);
+  let html=`<p class="note">${mine.length} eigene Einträge für ${esc(sp.name)}, davon ${mine.filter(e=>e.result==='fang').length} mit Fang und ${mine.filter(e=>e.hours!=null).length} mit Angeldauer.</p>`;
+  if(c&&c.m){
+    html+=`<label class="commtoggle"><input type="checkbox" id="calOn"${c.on?' checked':''}> Angepasste Gewichtung für ${esc(sp.name)} verwenden</label>`+
+      `<table class="factors"><tr><td><b>Baustein</b></td><td><b>Studie → angepasst</b></td></tr>`+
+      (c.act?ACT_KEYS.map(k=>{const o=sp.act[k],nv=c.act[k],arrow=nv>o+0.08?' ▲':nv<o-0.08?' ▼':'';return `<tr><td>${ACT_TXT[k]}</td><td>${Math.round(o*100)} % → ${Math.round(nv*100)} %${arrow}</td></tr>`;}).join(''):'')+
+      CAL_KEYS.map(k=>{const f=c.m[k],arrow=f>1.15?' ▲':f<0.87?' ▼':'';return `<tr><td>${CAL_TXT[k]}</td><td>${CAL_MAX[k]} → ${Math.round(CAL_MAX[k]*f)} Pkt.${arrow}</td></tr>`;}).join('')+`</table>`+
+      `<p class="note">Berechnet am ${new Date(c.date).toLocaleDateString('de-DE')} aus ${c.n} Einträgen (${c.nF} mit Fang, ${c.n0} ohne${c.nH<c.n?`, ${c.n-c.nH} ohne Angeldauer: dort werden 2 Std. angenommen`:''})${c.withComm?', inklusive Community-Fänge':''}.</p>`+
+      (c.qStudy&&c.qCal?`<p class="note">Prüfung auf denselben Daten: Im oberen Drittel der Bewertung lag die Fangquote bei ${c.qStudy.hi} % (Studie) bzw. ${c.qCal.hi} % (angepasst), im unteren Drittel bei ${c.qStudy.lo} % bzw. ${c.qCal.lo} %. Je größer der Abstand, desto besser trennt die Gewichtung. Da auf denselben Daten geprüft wird, ist das Ergebnis etwas zu optimistisch.</p>`:'');
+  }
+  html+=`<div class="frow"><button type="button" class="btn" id="calRun">${c?'Neu berechnen':'Gewichtung aus Fangbuch berechnen'}</button>${c?'<button type="button" class="btn ghost" id="calDel">Zurücksetzen</button>':''}</div>`+
+    (typeof community!=='undefined'&&community.length?`<label class="commtoggle"><input type="checkbox" id="calComm"${c&&c.withComm?' checked':''}> Community-Fänge mit einbeziehen</label>`:'');
+  box.innerHTML=html;
+}
+document.addEventListener('click',e=>{
+  if(e.target.id==='calRun'){const cm=$('calComm');const r=runCalib(state.species,cm&&cm.checked);
+    if(r.err){toast(r.err,true);return;}calibs[state.species]=r;saveCalibs();render();renderCalib();toast('Gewichtung für '+SPECIES[state.species].name+' angepasst.');}
+  if(e.target.id==='calDel'){delete calibs[state.species];saveCalibs();render();renderCalib();}
+});
+document.addEventListener('change',e=>{if(e.target.id==='calOn'){calibs[state.species].on=e.target.checked;saveCalibs();render();renderCalib();}});
 function openSheet(){
   listLimit=30;fEl('fSheet').hidden=false;document.body.classList.add('sheet-open');
   try{history.pushState({sheet:1},'','#eintraege');}catch(_){}
@@ -1557,7 +1720,7 @@ function hideSheet(){fEl('fSheet').hidden=true;document.body.classList.remove('s
 function closeSheet(){if(history.state&&history.state.sheet){history.back();}else hideSheet();}
 $('pClose').onclick=()=>{if(history.state&&history.state.sheet===3)history.back();else $('pSheet').hidden=true;};
 window.addEventListener('popstate',()=>{if(!$('pSheet').hidden){$('pSheet').hidden=true;return;}if(!fEl('fSheet').hidden)hideSheet();if(!$('iSheet').hidden){$('iSheet').hidden=true;document.body.classList.remove('sheet-open');}});
-$('infoBtn').onclick=()=>{renderDetail();$('iSheet').hidden=false;document.body.classList.add('sheet-open');
+$('infoBtn').onclick=()=>{renderDetail();renderCalib();$('iSheet').hidden=false;document.body.classList.add('sheet-open');
   try{history.pushState({sheet:2},'','#berechnung');}catch(_){}$('iSheet').querySelector('.sheetbody').scrollTop=0;};
 $('shareBtn').onclick=async()=>{
   const url=location.origin+location.pathname.replace(/[^/]*$/,'');
@@ -1617,7 +1780,27 @@ async function previewWx(){
 fEl('fTime').addEventListener('change',schedulePreview);fEl('fTime').addEventListener('input',schedulePreview);
 fEl('fSpecies').addEventListener('change',schedulePreview);
 function closeForm(){fEl('fForm').hidden=true;fEl('fNew').hidden=false;}
-fEl('fNew').onclick=()=>{endEdit();openForm();fEl('fMsg').textContent='';fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});};
+let multiDates=[];
+function renderMulti(){
+  fEl('fMultiList').innerHTML=multiDates.map((d,i)=>`<button type="button" data-md="${i}" aria-label="${d} entfernen">${new Date(d+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'})} ×</button>`).join('');
+  fEl('fSave').textContent=editingId?'Änderungen speichern':(fEl('fResult').value==='null'&&multiDates.length?`${multiDates.length+1} Nullnummern speichern`:'Eintrag speichern');
+}
+function syncResultUI(){
+  const isNull=fEl('fResult').value==='null';
+  fEl('fMultiWrap').hidden=!isNull||!!editingId;
+  fEl('fTimeLbl').firstChild.textContent=isNull&&!editingId?'Beginn (Datum und Uhrzeit)':'Datum und Uhrzeit';
+  if(!isNull){multiDates=[];}
+  renderMulti();schedulePreview();
+}
+fEl('fResult').addEventListener('change',syncResultUI);
+fEl('fMultiAdd').onclick=()=>{const v=fEl('fMultiDate').value;if(!v)return;
+  if(Date.parse(v+'T00:00')>Date.now()){toast('Nur vergangene Tage möglich.',true);return;}
+  const first=dstr(new Date(fEl('fTime').value).getTime());
+  if(v!==first&&!multiDates.includes(v)){multiDates.push(v);multiDates.sort();}fEl('fMultiDate').value='';renderMulti();};
+fEl('fMultiList').addEventListener('click',e=>{const b=e.target.closest('[data-md]');if(!b)return;multiDates.splice(+b.dataset.md,1);renderMulti();});
+fEl('fNull').onclick=()=>{endEdit();openForm();fEl('fResult').value='null';fEl('fSpecies').value=state.species;syncResultUI();fEl('fMsg').textContent='';
+  setTimeout(()=>{fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});},40);};
+fEl('fNew').onclick=()=>{endEdit();openForm();syncResultUI();fEl('fMsg').textContent='';fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});};
 let pendingDel=null,pendingTimer=null;
 fEl('catchList').onclick=e=>{
   const im=e.target.closest('img.thumb');
@@ -1644,18 +1827,20 @@ function startEdit(id){
   else{fEl('fSpecies').value='andere';fEl('fOtherWrap').hidden=false;fEl('fOther').value=c.species;}
   fEl('fTime').value=localInput(c.t);
   const s=v=>v==null?'':String(v).replace('.',',');
-  fEl('fWeight').value=s(c.weight);fEl('fLength').value=s(c.length);fEl('fDepth').value=s(c.depth);
+  fEl('fWeight').value=s(c.weight);fEl('fLength').value=s(c.length);fEl('fDepth').value=s(c.depth);fEl('fHours').value=s(c.hours);
   fEl('fPlace').value=c.place||'';fEl('fBait').value=c.bait||'';fEl('fNote').value=c.note||'';
   fPos={lat:c.lat,lng:c.lng,src:'gespeicherte Position'};showPos();schedulePreview();
   formPhoto=null;formPhotoRemoved=false;showFormPhoto(null);if(c.photo)photoGet(c.id).then(b=>{if(b&&editingId===c.id)showFormPhoto(b);});
   fEl('fSave').textContent='Änderungen speichern';fEl('fTitle').textContent='Fangbuch: Eintrag bearbeiten';
+  multiDates=[];syncResultUI();
   fEl('fMsg').textContent='';
   setTimeout(()=>fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'}),60);
 }
 function endEdit(){
   editingId=null;
   fEl('fSave').textContent='Eintrag speichern';fEl('fTitle').textContent='Fangbuch';
-  ['fWeight','fLength','fBait','fDepth','fNote','fOther'].forEach(id=>fEl(id).value='');
+  if(typeof multiDates!=='undefined'){multiDates=[];fEl('fMultiWrap').hidden=true;fEl('fMultiList').innerHTML='';}
+  ['fWeight','fLength','fBait','fDepth','fHours','fNote','fOther'].forEach(id=>fEl(id).value='');
   formPhoto=null;formPhotoRemoved=false;showFormPhoto(null);
   fEl('fResult').value='fang';fEl('fSpecies').value=state.species;fEl('fOtherWrap').hidden=true;
   fEl('fTime').value=localInput(Date.now());syncFormPlace();
@@ -1668,13 +1853,13 @@ function download(name,content,type){
 /* ---------- Community-Fänge ----------
    Export: anonymisierte CSV (Ort auf ~1 km, Zeit auf die Stunde, ohne Notizen, Fotos, IDs).
    Diese Datei lädt der Betreiber als community-faenge.csv ins Repository; alle Nutzer sehen sie dann. */
-const COMM_COLS=['Datum','Stunde','Ergebnis','Fischart','Gewicht kg','Länge cm','Gewässer','Breite','Länge','Köder','Tiefe m','Beißindex','Tageszeit','Mondphase','Luftdruck hPa','Drucktendenz','Wassertemperatur °C','Lufttemperatur °C','Wind km/h','Wolken %'];
+const COMM_COLS=['Datum','Stunde','Ergebnis','Fischart','Gewicht kg','Länge cm','Gewässer','Breite','Länge','Köder','Tiefe m','Angeldauer h','Beißindex','Tageszeit','Mondphase','Luftdruck hPa','Drucktendenz','Wassertemperatur °C','Lufttemperatur °C','Wind km/h','Wolken %'];
 fEl('fComm').onclick=()=>{
   const list=catches.filter(c=>c.lat!=null&&isFinite(c.lat));
   if(!list.length){fEl('fMsg').textContent='Keine Einträge mit Position zum Exportieren.';return;}
   const c2=v=>{if(v==null||v==='')return '';const s=typeof v==='number'?String(v).replace('.',','):String(v).replace(/[\r\n]+/g,' ');return /[;"]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   const rows=list.map(e=>{const d=new Date(e.t),w=e.wx||{};return [dstr(e.t),String(d.getHours()).padStart(2,'0'),e.result,e.species,e.weight,e.length,(e.place||'').replace(/^📍\s*/,''),
-    +(+e.lat).toFixed(2),+(+e.lng).toFixed(2),e.bait,e.depth,e.index,e.daytime,e.moon,w.p,w.trend,w.t72,w.tmp,w.ws,w.cc].map(c2).join(';');});
+    +(+e.lat).toFixed(2),+(+e.lng).toFixed(2),e.bait,e.depth,e.hours,e.index,e.daytime,e.moon,w.p,w.trend,w.t72,w.tmp,w.ws,w.cc].map(c2).join(';');});
   download('community-faenge.csv','\ufeff'+COMM_COLS.join(';')+'\n'+rows.join('\n'),'text/csv;charset=utf-8');
   fEl('fMsg').textContent=`${rows.length} Einträge anonymisiert exportiert (Ort auf etwa 1 km gerundet, Uhrzeit auf die Stunde, ohne Notizen und Fotos). Datei als „community-faenge.csv“ ins GitHub-Repository hochladen.`;
 };
@@ -1699,6 +1884,7 @@ async function loadCommunity(){
       const wt=num(c[ix('Wassertemperatur °C')]);
       return {t,result:res,species:S(c[ix('Fischart')]),weight:num(c[ix('Gewicht kg')]),length:num(c[ix('Länge cm')]),place:S(c[ix('Gewässer')]),
         lat:num(c[ix('Breite')]),lng:num(c[ix('Länge')]),bait:S(c[ix('Köder')]),index:num(c[ix('Beißindex')]),daytime:S(c[ix('Tageszeit')]),moon:S(c[ix('Mondphase')]),
+        hours:num(c[ix('Angeldauer h')]),speciesKey:Object.keys(SPECIES).find(k=>SPECIES[k].name===S(c[ix('Fischart')]))||'',
         wx:(wt!=null||c[ix('Drucktendenz')])?{t72:wt,trend:S(c[ix('Drucktendenz')]),p:num(c[ix('Luftdruck hPa')])}:null,community:true};
     }).filter(c=>isFinite(c.t)&&c.lat!=null&&c.lng!=null&&Math.abs(c.lat)<=90&&Math.abs(c.lng)<=180);
   }catch(_){community=[];}
@@ -1713,10 +1899,10 @@ $('mapComm').onchange=()=>updateMapCatches();
 $('evalComm').onchange=()=>renderCatches();
 fEl('fCsv').onclick=()=>{
   if(!catches.length){fEl('fMsg').textContent='Keine Einträge zum Exportieren.';return;}
-  const head=['Datum','Uhrzeit','Ergebnis','Fischart','Gewicht kg','Länge cm','Gewässer','Breite','Länge','Köder','Tiefe m','Notiz','Beißindex','Tageszeit','Mondphase','Mond %','Luftdruck hPa','Drucktendenz 3h','Temperatur °C','Ø Temp 3 Tage','Feuchte %','Wolken %','Wind km/h','Böen km/h','Niederschlag mm'];
+  const head=['Datum','Uhrzeit','Ergebnis','Fischart','Gewicht kg','Länge cm','Gewässer','Breite','Länge','Köder','Tiefe m','Angeldauer h','Notiz','Beißindex','Tageszeit','Mondphase','Mond %','Luftdruck hPa','Drucktendenz 3h','Temperatur °C','Ø Temp 3 Tage','Feuchte %','Wolken %','Wind km/h','Böen km/h','Niederschlag mm'];
   const c=v=>{if(v==null)return '';const s=typeof v==='number'?String(v).replace('.',','):String(v);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   const rows=catches.map(e=>{const d=new Date(e.t),w=e.wx||{};return [d.toLocaleDateString('de-DE'),d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),
-    e.result,e.species,e.weight,e.length,e.place,e.lat,e.lng,e.bait,e.depth,e.note,e.index,e.daytime,e.moon,e.illum,w.p,w.dp,w.tmp,w.t72,w.rh,w.cc,w.ws,w.wg,w.pr].map(c).join(';');});
+    e.result,e.species,e.weight,e.length,e.place,e.lat,e.lng,e.bait,e.depth,e.hours,e.note,e.index,e.daytime,e.moon,e.illum,w.p,w.dp,w.tmp,w.t72,w.rh,w.cc,w.ws,w.wg,w.pr].map(c).join(';');});
   download('fangbuch.csv','\ufeff'+head.join(';')+'\n'+rows.join('\n'),'text/csv;charset=utf-8');
 };
 fEl('fBackup').onclick=async()=>{
@@ -1737,7 +1923,7 @@ fEl('fImport').onchange=async e=>{
     list.forEach(c=>{const cid=c&&c.id!=null?String(c.id).replace(/[^a-z0-9]/gi,''):'';if(cid&&isFinite(c.t)&&!ids.has(cid)){ids.add(cid);
       const w=c.wx&&typeof c.wx==='object'?{p:N(c.wx.p),dp:N(c.wx.dp),trend:S(c.wx.trend),tmp:N(c.wx.tmp),t72:N(c.wx.t72),rh:N(c.wx.rh),cc:N(c.wx.cc),ws:N(c.wx.ws),wg:N(c.wx.wg),pr:N(c.wx.pr)}:null;
       catches.push({id:cid,t:+c.t,result:['fang','biss','null'].includes(c.result)?c.result:'fang',species:S(c.species),speciesKey:S(c.speciesKey),water:S(c.water),
-        weight:N(c.weight),length:N(c.length),place:S(c.place),lat:N(c.lat),lng:N(c.lng),bait:S(c.bait),depth:N(c.depth),note:S(c.note),index:N(c.index),
+        weight:N(c.weight),length:N(c.length),place:S(c.place),lat:N(c.lat),lng:N(c.lng),bait:S(c.bait),depth:N(c.depth),hours:N(c.hours),note:S(c.note),index:N(c.index),
         daytime:S(c.daytime),moon:S(c.moon),illum:N(c.illum),wx:w,photo:false});n++;}});
     if(d.photos&&typeof d.photos==='object'){for(const c of catches){const u=d.photos[c.id];if(!c.photo&&typeof u==='string'&&u.startsWith('data:image/')){try{await photoPut(c.id,await dataURLToBlob(u));c.photo=true;}catch(_){}}}}
     catches.sort((a,b)=>b.t-a.t);saveCatches();renderCatches();fEl('fMsg').textContent=n+' Einträge geladen.';}
@@ -1748,7 +1934,7 @@ function importCSV(txt){
   const rows=parseCSV(txt);if(rows.length<2){fEl('fMsg').textContent='CSV enthält keine Einträge.';return;}
   const H=rows[0].map(x=>x.trim().toLowerCase()),col=(...names)=>{for(const n of names){const i=H.indexOf(n.toLowerCase());if(i>=0)return i;}return -1;};
   const iD=col('Datum'),iU=col('Uhrzeit','Zeit'),iS=col('Stunde'),iR=col('Ergebnis'),iF=col('Fischart','Art'),iG=col('Gewicht kg','Gewicht'),iL=col('Länge cm','Laenge cm','Größe cm'),
-        iW=col('Gewässer','Ort','Gewaesser'),iLa=col('Breite','Lat','Breitengrad'),iLo=col('Länge','Lng','Lon','Längengrad'),iK=col('Köder','Koeder','Methode'),iT=col('Tiefe m','Tiefe'),iN=col('Notiz','Bemerkung');
+        iW=col('Gewässer','Ort','Gewaesser'),iLa=col('Breite','Lat','Breitengrad'),iLo=col('Länge','Lng','Lon','Längengrad'),iK=col('Köder','Koeder','Methode'),iT=col('Tiefe m','Tiefe'),iH=col('Angeldauer h','Angeldauer','Dauer','Stunden'),iN=col('Notiz','Bemerkung');
   if(iD<0||iF<0){fEl('fMsg').textContent='CSV braucht mindestens die Spalten „Datum“ und „Fischart“.';return;}
   const num=v=>{if(v==null||String(v).trim()==='')return null;const x=parseFloat(String(v).replace(',','.'));return isFinite(x)?x:null;};
   const S=v=>v==null?'':String(v).trim().slice(0,300);
@@ -1767,7 +1953,7 @@ function importCSV(txt){
     const species=S(r[iF])||'Unbekannt',res=S(r[iR]).toLowerCase();
     const c={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),t,result:['fang','biss','null'].includes(res)?res:(res.startsWith('null')?'null':res.startsWith('biss')?'biss':'fang'),
       species,speciesKey:nameToKey(species),water:WTYPE(),weight:iG>=0?num(r[iG]):null,length:iL>=0?num(r[iL]):null,place:iW>=0?S(r[iW]):'',
-      lat:lat!=null&&Math.abs(lat)<=90?lat:null,lng:lng!=null&&Math.abs(lng)<=180?lng:null,bait:iK>=0?S(r[iK]):'',depth:iT>=0?num(r[iT]):null,note:iN>=0?S(r[iN]):'',
+      lat:lat!=null&&Math.abs(lat)<=90?lat:null,lng:lng!=null&&Math.abs(lng)<=180?lng:null,bait:iK>=0?S(r[iK]):'',depth:iT>=0?num(r[iT]):null,hours:iH>=0?num(r[iH]):null,note:iN>=0?S(r[iN]):'',
       index:null,daytime:'',moon:'',illum:null,wx:null,photo:false};
     if(c.lat==null||c.lng==null){c.lat=null;c.lng=null;noPos++;}
     if(have.has(keyOf(c)))continue;have.add(keyOf(c));catches.push(c);n++;
