@@ -69,6 +69,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 /* ---- Karten ---- */
 .card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:22px;padding:16px;margin:0 0 14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.wave{grid-column:1/-1;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(95,208,255,.10);border:1px solid rgba(95,208,255,.25);font-size:.9rem}
+.wave b{font-size:1rem}.wave.rough{background:rgba(255,107,90,.12);border-color:rgba(255,107,90,.4)}
+.winfo{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin:0 0 14px;font-size:.9rem}
+.winfo .wn{font-weight:700;font-size:1rem}.winfo .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.winfo input{flex:1;min-width:10em}
 .when{display:inline-flex;align-items:center;gap:6px;font-size:.86rem;font-weight:700;padding:5px 11px;border-radius:999px;margin:-2px 0 12px;background:rgba(61,220,132,.14);color:#8ff0b8}
 .when.past{background:rgba(255,181,71,.16);color:#ffd38a}.when.future{background:rgba(95,208,255,.14);color:#9fe3ff}
 .whenhead{color:var(--accent2)}
@@ -264,6 +269,7 @@ body.sheet-open{overflow:hidden}
     <div class="species" id="species" role="group" aria-label="Fischart"></div>
     <p class="sub" id="speciesInfo"></p>
     <p class="rule" id="speciesRule"></p>
+    <div class="winfo" id="waterInfo"></div>
 
     <div class="card gauge">
       <div class="gside"><div class="glabel">Beste Zeiten</div><div class="gval" id="gLeft">–</div></div>
@@ -288,6 +294,7 @@ body.sheet-open{overflow:hidden}
         <div class="wxicon" id="wxIcon"></div>
         <div class="wxtemp"><div class="big" id="wxTemp">–</div><div class="minmax" id="wxMinMax"></div></div>
         <div class="wxstats" id="wxStats"></div>
+        <div class="wave" id="wxWave" hidden></div>
       </div>
       <details class="more"><summary>Alle Wetterwerte und Wassertemperatur</summary>
         <table id="wx"></table>
@@ -505,8 +512,8 @@ function moonIllum(t){
 const KEY='beissindex:live:v1';
 const state={lat:52.5357,lng:13.1997,place:'Berlin Spandau',species:'zander',waterMode:'auto',waterAuto:'binnen',region:'Berlin',date:todayStr()};
 let wx=null;
-try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species','waterMode','waterAuto','region'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,region:state.region,wx}));}catch(_){}}
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species','waterMode','waterAuto','region','waterName','waterKind'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,region:state.region,waterName:state.waterName,waterKind:state.waterKind,wx}));}catch(_){}}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dayBounds(str){const [y,m,d]=str.split('-').map(Number);return [new Date(y,m-1,d).getTime(),new Date(y,m-1,d+1).getTime()];}
 const dstr=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -625,14 +632,45 @@ function ruleText(rl){
   return `${rl.region}: ${parts.join(', ')}.`;
 }
 function blocked(t){if(SP().banned)return 'Fangverbot';const rl=ruleFor(state.species,t);return rl&&rl.closed?'Schonzeit':null;}
+Object.assign(SPECIES,{
+  lufer:{name:'Blaubarsch (Lüfer)',t:[14,17,24,27],act:{dusk:1,day:.7,night:.3},sky:{over:3,sun:0},moon:3,season:[9,10,11,12],water:true,
+    info:'Schwarmräuber, im Schwarzen Meer und Bosporus vor allem im Herbst auf Wanderung. Jagt in der Dämmerung oft an der Oberfläche.'},
+  istavrit:{name:'Stöcker (İstavrit)',t:[10,14,22,26],act:{dusk:1,day:.8,night:.4},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Kleiner Schwarmfisch, mit Paternoster leicht zu fangen. Guter Köderfisch.'},
+  hamsi:{name:'Sardelle (Hamsi)',t:[8,12,20,24],act:{dusk:1,day:.8,night:.3},sky:{over:0,sun:0},moon:0,season:[11,12,1,2,3],water:true,
+    info:'Schwarmfisch, im Schwarzen Meer vor allem im Winter in Küstennähe. Köderfisch.'},
+  kefal:{name:'Meeräsche (Kefal)',t:[12,16,26,29],act:{dusk:1,day:.8,night:.2},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Vorsichtiger Friedfisch in Häfen und Flussmündungen, beißt am besten mit feinem Gerät.'},
+  kalkan:{name:'Steinbutt (Kalkan)',t:[6,9,16,19],act:{dusk:1,day:.5,night:.7},sky:{over:0,sun:0},moon:3,water:true,
+    info:'Bodenräuber über Sand und Kies. Im Schwarzen Meer streng reguliert, lokale Schonzeiten und Mindestmaße prüfen.'},
+  mezgit:{name:'Wittling (Mezgit)',t:[6,9,15,18],act:{dusk:1,day:.7,night:.5},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Kaltwasserliebend, im Schwarzen Meer vor allem im Winter und Frühjahr in Küstennähe.'},
+  barbun:{name:'Rotbarbe (Barbun)',t:[12,15,22,26],act:{dusk:.9,day:.9,night:.2},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Bodenfisch über Sand, tagaktiv. Fang mit kleinen Haken und Wurm.'},
+  dorade:{name:'Goldbrasse (Çipura)',t:[14,17,25,28],act:{dusk:1,day:.8,night:.3},sky:{over:3,sun:0},moon:3,water:true,
+    info:'Mittelmeer und Atlantikküste, über Felsen und Seegras. Beißt gern auf Muschel und Krebs.'}
+});
+SPECIES.wolfsbarsch.info='Küstenräuber in Brandung, Felsen und Flussmündungen (türkisch Levrek). Mindestmaße und Fangmengen je Land prüfen.';
 const WATERS={
   binnen:{name:'Binnengewässer (See/Fluss)',big:['wels','zander','hecht','aal','karpfen','rapfen','schleie'],bait:['barsch','rotauge','gruendling','ukelei','rotfeder','brasse']},
   ostsee:{name:'Ostsee (Küste/Förde)',big:['meerforelle','hornhecht','plattfisch','makrele','hering'],bait:['hering','sandaal','grundel','sprotte'],banned:['dorsch']},
   nordsee:{name:'Nordsee (Küste/Watt)',big:['wolfsbarsch','makrele','plattfisch','hornhecht'],bait:['hering','sandaal','sprotte']},
-  bergland:{name:'Bergland (Forellengewässer)',big:['bachforelle','regenbogenforelle','hecht','barbe','aesche','doebel'],bait:['gruendling','rotauge']}
+  bergland:{name:'Bergland (Forellengewässer)',big:['bachforelle','regenbogenforelle','hecht','barbe','aesche','doebel'],bait:['gruendling','rotauge']},
+  schwarzmeer:{name:'Schwarzes Meer / Marmara',big:['lufer','wolfsbarsch','kalkan','mezgit','kefal','barbun'],bait:['istavrit','hamsi']},
+  mittelmeer:{name:'Mittelmeer',big:['wolfsbarsch','dorade','lufer','barbun','kefal'],bait:['istavrit','hamsi']},
+  atlantik:{name:'Meer (Küste)',big:['wolfsbarsch','makrele','plattfisch','dorade','hornhecht'],bait:['sandaal','hering','sprotte']}
 };
+const SEA_TYPES=['ostsee','nordsee','schwarzmeer','mittelmeer','atlantik'];
+const WSHORT={binnen:'Binnengewässer',ostsee:'Ostsee',nordsee:'Nordsee',bergland:'Bergland',schwarzmeer:'Schwarzes Meer',mittelmeer:'Mittelmeer',atlantik:'Meer'};
+function seaFor(lat,lng){
+  if(lat>=53.85&&lat<=66&&lng>=9.3&&lng<=30.5)return 'ostsee';
+  if(lat>=40&&lat<=47.6&&lng>=26&&lng<=42)return 'schwarzmeer';   // inkl. Marmara, Asowsches Meer
+  if(lat>=30&&lat<=46.5&&lng>=-5.6&&lng<=36.5)return 'mittelmeer';
+  if(lat>=50.5&&lat<=62&&lng>=-4&&lng<=9.3)return 'nordsee';
+  return 'atlantik';
+}
 const WTYPE=()=>WATERS[state.waterMode==='auto'?state.waterAuto:state.waterMode]?(state.waterMode==='auto'?state.waterAuto:state.waterMode):'binnen';
-const isSea=()=>['ostsee','nordsee'].includes(WTYPE());
+const isSea=()=>SEA_TYPES.includes(WTYPE());
 const SP=()=>SPECIES[state.species]||SPECIES.zander;
 
 /* ---------- Gemessene Wassertemperatur ---------- */
@@ -681,9 +719,10 @@ async function fetchWx(lat,lng,past,fwd,sea){
     ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m,sst:null};
   if(sea){
     try{
-      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_surface_temperature&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
-      if(m.ok){const mj=(await m.json()).hourly;const mp=new Map();mj.time.forEach((x,i)=>{if(mj.sea_surface_temperature[i]!=null)mp.set(x*1000,mj.sea_surface_temperature[i]);});
-        if(mp.size)out.sst=out.t.map(x=>mp.has(x)?mp.get(x):null);}
+      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_surface_temperature,wave_height,wave_period,wave_direction&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
+      if(m.ok){const mj=(await m.json()).hourly;
+        const al=key=>{const arr=mj[key];if(!arr)return null;const mp=new Map();mj.time.forEach((x,i)=>{if(arr[i]!=null)mp.set(x*1000,arr[i]);});return mp.size?out.t.map(x=>mp.has(x)?mp.get(x):null):null;};
+        out.sst=al('sea_surface_temperature');out.wh=al('wave_height');out.wp=al('wave_period');out.wd=al('wave_direction');}
     }catch(_){}
   }
   if(sea==='nordsee'){
@@ -766,7 +805,8 @@ function wxAt(t){
   else if(pg){t72=pg.value;wsrc='pegel';}
   const sstv=D.sst&&D.sst[i]!=null?D.sst[i]:null;
   const fixed=wsrc==='manual'||wsrc==='pegel';
-  return {dt:sstv!=null||fixed?null:dt,t72:fixed?t72:(sstv!=null?sstv:t72),sst:fixed?null:sstv,wsrc,p:D.p[i],dp:D.p[i]-D.p[i-3],rh:D.rh[i],cc:D.cc[i],ws:D.ws[i],wg:D.wg[i],pr:D.pr[i],tmp:D.tmp[i]};
+  const wave=D.wh&&D.wh[i]!=null?{h:D.wh[i],p:D.wp?D.wp[i]:null,d:D.wd?D.wd[i]:null}:null;
+  return {wave,dt:sstv!=null||fixed?null:dt,t72:fixed?t72:(sstv!=null?sstv:t72),sst:fixed?null:sstv,wsrc,p:D.p[i],dp:D.p[i]-D.p[i-3],rh:D.rh[i],cc:D.cc[i],ws:D.ws[i],wg:D.wg[i],pr:D.pr[i],tmp:D.tmp[i]};
 }
 function pressureRate(dp){
   if(dp>=2)return ['stark steigend',-5]; if(dp>=0.7)return ['leicht steigend',0];
@@ -862,11 +902,11 @@ function render(){
   A=analyze();
   const {ds,de,series,ev}=A,now=Date.now(),isToday=now>=ds&&now<de;
   $('placeLabel').textContent=state.place;
-  $('placeSub').textContent=SP().name+' · '+({binnen:'Binnengewässer',ostsee:'Ostsee',nordsee:'Nordsee',bergland:'Bergland'}[WTYPE()]||'');
+  $('placeSub').textContent=SP().name+' · '+(WSHORT[WTYPE()]||'');
   if(typeof updateMapPlace==='function')updateMapPlace();
   $('speciesInfo').textContent=SP().info;
   {const rl=ruleFor(state.species,Date.parse(state.date+'T12:00'));const el=$('speciesRule');
-   el.textContent=rl?ruleText(rl)+(rl.closed?' An diesem Tag ist Schonzeit, gezieltes Beangeln ist verboten.':''):(isSea()?'':'Schonzeiten und Mindestmaße sind für dieses Bundesland nicht hinterlegt. Bitte die Landesfischereiordnung prüfen.');
+   el.textContent=rl?ruleText(rl)+(rl.closed?' An diesem Tag ist Schonzeit, gezieltes Beangeln ist verboten.':''):(['ostsee','nordsee'].includes(WTYPE())?'':'Schonzeiten und Mindestmaße sind für diese Region nicht hinterlegt. Bitte die örtlichen Fischereibestimmungen prüfen.');
    el.className='rule'+(rl&&rl.closed?' closed':'');}
   const best=series.reduce((a,b)=>b.total>a.total?b:a,series[0]);
   A.best=best;
@@ -892,6 +932,7 @@ function render(){
     rows.map(r=>`<tr><td>${r[1]}</td><td>${fmt(r[0])}</td></tr>`).join('');
 
   renderWeek();
+  renderWaterInfo();
   renderSunMoon();
   renderDetail();
   ensureHist();
@@ -964,6 +1005,40 @@ function sunArcSVG(frac,up){
 }
 const VERB=s=>s>=65?'Sehr hohe Aktivität':s>=50?'Gute Aktivität':s>=35?'Mäßige Aktivität':'Geringe Aktivität';
 const WSRC={manual:'gemessen',pegel:'Pegel',est:'geschätzt',short:'geschätzt'};
+const DIR=d=>d==null?'':['N','NO','O','SO','S','SW','W','NW'][Math.round(((d%360)+360)%360/45)%8];
+function waveRating(w,gust){
+  const hh=w.h;let txt,rough=false;
+  if(hh<0.3)txt='ruhig';else if(hh<0.6)txt='leichter Seegang';else if(hh<1.0)txt='mäßiger Seegang, für kleine Boote unruhig';
+  else if(hh<1.5){txt='rau für kleine Boote';rough=true;}else{txt='grobe See, nur für erfahrene Skipper und größere Boote';rough=true;}
+  if(gust!=null&&gust>=40){txt+=`, Böen bis ${Math.round(gust)} km/h`;rough=true;}
+  return {txt,rough};
+}
+let waterNotes={};try{waterNotes=JSON.parse(localStorage.getItem('beissindex:waterNotes')||'{}');}catch(_){waterNotes={};}
+const wnKey=()=>(state.waterName||state.place||'').replace(/^📍\s*/,'').toLowerCase().trim();
+let wnEdit=false;
+function regionHint(){
+  const r=state.region||'';
+  if(r==='Brandenburg')return 'In Brandenburg gehören viele Gewässer zum Landesanglerverband (LAVB, Gewässerverzeichnis auf dessen Website). Andere haben eigene Karten, etwa die Havelkarte der Fischereigenossenschaft.';
+  if(r==='Berlin')return 'In Berlin gibt es Landesgewässer und Gewässer von Verbänden und Vereinen (z. B. DAV Landesverband Berlin). Welche Karte gilt, steht beim jeweiligen Bewirtschafter.';
+  if(r)return 'Wer ein Gewässer bewirtschaftet (Verband, Verein, Genossenschaft, privat), ist regional verschieden. Vor dem Angeln die Angelkarte klären.';
+  return '';
+}
+function renderWaterInfo(){
+  const el=$('waterInfo');if(!el)return;
+  if(isSea()){el.hidden=true;return;}el.hidden=false;
+  const nm=state.waterName,note=waterNotes[wnKey()]||'';
+  const q=encodeURIComponent(`${nm||state.place.replace(/^📍\s*/,'')} ${state.region||''} Angelkarte Gewässerbewirtschafter`);
+  el.innerHTML=`<div class="wn">💧 ${nm?esc(nm)+(state.waterKind?' <span class="sub">('+esc(state.waterKind)+')</span>':''):'<span class="sub">Kein Gewässer am gewählten Punkt erkannt</span>'}</div>`+
+    (wnEdit?`<div class="row"><input type="text" id="wnInput" maxlength="120" placeholder="z. B. LAVB, DAV Berlin, Havelkarte, Verein …" value="${esc(note)}"><button type="button" class="infobtn" id="wnSave">Speichern</button></div>`
+      :`<div>Bewirtschafter / Angelkarte: ${note?'<b>'+esc(note)+'</b>':'<span class="sub">nicht hinterlegt</span>'}</div>`)+
+    `<div class="row"><button type="button" class="infobtn" id="wnEditBtn">✎ ${note?'Ändern':'Eintragen'}</button><a class="infobtn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/search?q=${q}">🔎 Nachschlagen</a></div>`+
+    (regionHint()?`<div class="sub" style="margin-top:6px">${esc(regionHint())}</div>`:'');
+}
+document.addEventListener('click',e=>{
+  if(e.target.id==='wnEditBtn'){wnEdit=true;renderWaterInfo();const i=$('wnInput');if(i)i.focus();}
+  if(e.target.id==='wnSave'){const v=$('wnInput').value.trim().slice(0,120);if(v)waterNotes[wnKey()]=v;else delete waterNotes[wnKey()];
+    try{localStorage.setItem('beissindex:waterNotes',JSON.stringify(waterNotes));}catch(_){}wnEdit=false;renderWaterInfo();}
+});
 function renderCards(shown,t,isToday,bl){
   // Gauge
   const C=2*Math.PI*50,v=bl?0:shown.total;
@@ -988,6 +1063,10 @@ function renderCards(shown,t,isToday,bl){
     if(v.length)mm=`<b>${Math.round(Math.min(...v))}°</b> / <b>${Math.round(Math.max(...v))}°</b> heute`.replace(' heute',isToday?' heute':'');}
   $('wxMinMax').innerHTML=mm;
   const arrow=W?(W.dp>=0.7?'↗':W.dp<=-0.7?'↘':'→'):'';
+  {const el=$('wxWave'),w=W&&W.wave;
+   if(w){const r=waveRating(w,W.wg);el.hidden=false;el.className='wave'+(r.rough?' rough':'');
+     el.innerHTML=`🌊 <b>Wellen ${r1(w.h)} m</b>${w.p!=null?` · Periode ${Math.round(w.p)} s`:''}${w.d!=null?` · aus ${DIR(w.d)}`:''}<br>${esc(r.txt)}<br><span class="sub">Modellwert zur Orientierung, kein Seewetterbericht. Vor dem Auslaufen den amtlichen Seewetterbericht prüfen.</span>`;}
+   else el.hidden=true;}
   $('wxStats').innerHTML=W?[
     [IC.gauge,`${Math.round(W.p)} ${arrow}`,'hPa'],[IC.drop,`${Math.round(W.rh)} %`,'Feuchte'],
     [IC.umb,`${r1(W.pr)}`,'mm Regen'],[IC.windS,`${Math.round(W.ws)}`,'km/h Wind']
@@ -1044,7 +1123,7 @@ function renderDetail(){
   $('wx').innerHTML=W?[
     ['Luftdruck',r1(W.p)+' hPa'],['Tendenz (3 Std.)',(W.dp>0?'+':'')+r1(W.dp)+' hPa, '+shown.prLabel],
     ['Luftfeuchtigkeit',Math.round(W.rh)+' %'],['Bewölkung',Math.round(W.cc)+' %'],
-    ['Wind / Böen',Math.round(W.ws)+' / '+Math.round(W.wg)+' km/h'],['Niederschlag',r1(W.pr)+' mm/h'],['Temperatur',r1(W.tmp)+' °C'],[W.wsrc==='manual'?'Wassertemperatur (von dir gemessen)':W.wsrc==='pegel'?`Wassertemperatur (Pegel ${esc(pegel.station)}${pegel.water?', '+esc(pegel.water):''}, ${pegel.km} km, ${fmt(pegel.ts)} Uhr)`:W.sst!=null?'Wassertemperatur (Meer, Modell)':'Wassertemperatur (geschätzt aus Luft)',r1(W.t72)+' °C']
+    ['Wind / Böen',Math.round(W.ws)+' / '+Math.round(W.wg)+' km/h'],['Niederschlag',r1(W.pr)+' mm/h'],...(W.wave?[['Wellenhöhe / Periode',r1(W.wave.h)+' m'+(W.wave.p!=null?' / '+Math.round(W.wave.p)+' s':'')+(W.wave.d!=null?' aus '+DIR(W.wave.d):'')]]:[]),['Temperatur',r1(W.tmp)+' °C'],[W.wsrc==='manual'?'Wassertemperatur (von dir gemessen)':W.wsrc==='pegel'?`Wassertemperatur (Pegel ${esc(pegel.station)}${pegel.water?', '+esc(pegel.water):''}, ${pegel.km} km, ${fmt(pegel.ts)} Uhr)`:W.sst!=null?'Wassertemperatur (Meer, Modell)':'Wassertemperatur (geschätzt aus Luft)',r1(W.t72)+' °C']
   ].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join(''):'';
   {
     const st=$('wxStatus');
@@ -1154,7 +1233,25 @@ const PLACES=[
 ];
 const norm=s=>s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 function localHits(q){const ws=norm(q).split(' ').filter(Boolean);if(!ws.length)return [];return PLACES.filter(p=>{const n=norm(p[0]);return ws.every(w=>n.includes(w));}).map(p=>({name:p[0],lat:p[1],lng:p[2],src:''}));}
+async function searchOSM(q){
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=1&accept-language=de&q='+encodeURIComponent(q),{cache:'no-store'});
+    if(!r.ok)return [];const arr=await r.json();
+    return arr.map(x=>{const a=x.address||{};
+      const isWater=x.category==='waterway'||(x.category==='natural'&&x.type==='water')||x.type==='reservoir'||x.category==='water';
+      const kind=x.type==='canal'?'Kanal':x.type==='river'?'Fluss':x.type==='stream'?'Bach':isWater?'Gewässer':'';
+      const where=[a.suburb||a.village||a.town||a.city_district,a.city||a.county,a.state,a.country_code&&a.country_code!=='de'?a.country:''].filter(Boolean);
+      const nm=x.name||String(x.display_name||'').split(',')[0];
+      return {name:[nm+(kind?' ('+kind+')':''),...new Set(where)].filter(Boolean).slice(0,3).join(', '),lat:+x.lat,lng:+x.lon,water:isWater,waterName:isWater?nm:null,coarse:x.category==='waterway'};
+    }).filter(x=>isFinite(x.lat)&&isFinite(x.lng));
+  }catch(_){return [];}
+}
 async function geocode(q){
+  const [osm,om]=await Promise.all([searchOSM(q),geocodeOM(q)]);
+  const out=[...osm.filter(x=>x.water),...(om||[]),...osm.filter(x=>!x.water)];
+  const seen=[];return out.filter(x=>{if(seen.some(s=>Math.abs(s.lat-x.lat)<0.005&&Math.abs(s.lng-x.lng)<0.005))return false;seen.push(x);return true;}).slice(0,8);
+}
+async function geocodeOM(q){
   const words=q.split(/[\s,]+/).filter(Boolean),tries=[...new Set([q,words[words.length-1],words[0]])];
   for(const t of tries){
     try{
@@ -1173,6 +1270,18 @@ async function detectRegion(lat,lng){
   try{const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&accept-language=de&lat='+G3(lat)+'&lon='+G3(lng),{cache:'no-store'});
     if(!r.ok)return null;const j=await r.json();return (j.address&&(j.address.state||j.address.city))||null;}catch(_){return null;}
 }
+async function waterAt(lat,lng){
+  const la=G3(lat),lo=G3(lng);
+  const q=`[out:json][timeout:8];is_in(${la},${lo})->.a;(area.a["natural"="water"]["name"];area.a["landuse"="reservoir"]["name"];)->.w;.w out tags 3;way(around:300,${la},${lo})["waterway"~"^(river|canal|stream)$"]["name"];out tags 3;`;
+  try{
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    if(!r.ok)return null;const el=(await r.json()).elements||[];
+    const area=el.find(e=>e.type==='area'&&e.tags&&e.tags.name),way=el.find(e=>e.type==='way'&&e.tags&&e.tags.name);
+    const pick=area||way;if(!pick)return null;const tg=pick.tags;
+    const kind=tg.waterway==='canal'?'Kanal':tg.waterway==='river'?'Fluss':tg.waterway==='stream'?'Bach':tg.water==='river'?'Fluss':tg.water==='canal'?'Kanal':tg.water==='reservoir'||tg.landuse==='reservoir'?'Stausee':'See';
+    return {name:String(tg['name:de']||tg.name).slice(0,60),kind};
+  }catch(_){return null;}
+}
 async function detectWater(lat,lng){
   // 1) Küste in der Nähe? (OpenStreetMap über Overpass)  2) sonst Höhe aus Open-Meteo
   let coast=null;
@@ -1181,19 +1290,21 @@ async function detectWater(lat,lng){
     const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
     if(r.ok){const j=await r.json();coast=j.elements&&j.elements.length>0;}
   }catch(_){}
-  if(coast)return (lng>=9.3&&lat>=53.85)?'ostsee':'nordsee';
+  if(coast)return seaFor(+lat,+lng);
   let elev=wx&&wx.key===(+lat).toFixed(3)+','+(+lng).toFixed(3)?wx.elev:null;
   if(elev==null){try{const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+G2(lat)+'&longitude='+G2(lng));if(r.ok)elev=(await r.json()).elevation[0];}catch(_){}}
   if(coast===null&&elev==null)return null;
   return elev!=null&&elev>=450?'bergland':'binnen';
 }
-async function setPlace(name,lat,lng){
+async function setPlace(name,lat,lng,knownWater){
+  state.waterName=knownWater?knownWater.name:null;state.waterKind=knownWater?knownWater.kind:'';
   if(map)map._userMoved=false;
   if(!$('oSheet').hidden)closePlace();
   setTimeout(renderSpots,0);
   state.place=name;state.lat=+(+lat).toFixed(4);state.lng=+(+lng).toFixed(4);persist();
   hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();showManual();render();
   const myKey=wxKey();
+  if(!knownWater)waterAt(state.lat,state.lng).then(w=>{if(wxKey()!==myKey)return;state.waterName=w?w.name:null;state.waterKind=w?w.kind:'';persist();render();});
   const wt=await detectWater(state.lat,state.lng);
   if(wxKey()!==myKey)return; // inzwischen wurde ein anderer Ort gewählt
   if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
@@ -1204,8 +1315,8 @@ async function setPlace(name,lat,lng){
   await loadWeather(true);render();
 }
 function showHits(list){
-  hitsEl.innerHTML=list.slice(0,6).map((p,i)=>`<li><button type="button" data-i="${i}">${p.name}<small>${(+p.lat).toFixed(3)}, ${(+p.lng).toFixed(3)}</small></button></li>`).join('');
-  hitsEl.onclick=e=>{const b=e.target.closest('button');if(!b)return;const p=list[+b.dataset.i];setPlace(p.name,p.lat,p.lng);};
+  hitsEl.innerHTML=list.slice(0,8).map((p,i)=>`<li><button type="button" data-i="${i}">${esc(p.name)}<small>${(+p.lat).toFixed(3)}, ${(+p.lng).toFixed(3)}${p.coarse?' · Fluss/Kanal: Position grob, genaue Stelle auf der Karte wählen':''}</small></button></li>`).join('');
+  hitsEl.onclick=e=>{const b=e.target.closest('button');if(!b)return;const p=list[+b.dataset.i];setPlace(p.waterName||p.name.split(',')[0],p.lat,p.lng,p.waterName?{name:p.waterName,kind:''}:null);};
 }
 async function findPlace(){
   const q=qEl.value.trim();if(!q){msg.textContent='Ort eingeben, z. B. Berlin Spandau.';return;}
@@ -1249,10 +1360,11 @@ async function locateMe(){
   try{
     const p=await getPosition();
     const lat=p.coords.latitude,lng=p.coords.longitude,acc=Math.round(p.coords.accuracy||0);
-    const rv=await reverseName(lat,lng);
-    const name='📍 '+((rv&&rv.name)||`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
+    const [rv,wa]=await Promise.all([reverseName(lat,lng),waterAt(lat,lng)]);
+    const local=(rv&&rv.name)||`${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+    const name='📍 '+(wa?wa.name+' · '+local.split(',')[0]:local);
     if(rv&&rv.state)state.region=rv.state;
-    await setPlace(name,lat,lng);
+    await setPlace(name,lat,lng,wa||{name:null,kind:''});
     toast(`Standort übernommen: ${name.slice(3)}${acc?` (± ${acc} m)`:''}`);
   }catch(err){
     const t=geoError(err);msg.textContent=t;toast(t,true);
@@ -1333,7 +1445,7 @@ function initMap(){
   catchLayer=L.layerGroup().addTo(map);
   map.on('click',e=>{
     if(pickMode){const {lat,lng}=e.latlng;fPos={lat,lng,src:'Karte'};endPick();showTab('fang');showPos();schedulePreview();
-      if(!fEl('fPlace').value.trim()||fEl('fPlace').value===state.place.replace(/^📍\s*/,''))reverseName(lat,lng).then(r=>{if(r&&r.name)fEl('fPlace').value=r.name;});
+      if(!fEl('fPlace').value.trim()||fEl('fPlace').value===state.place.replace(/^📍\s*/,''))Promise.all([waterAt(lat,lng),reverseName(lat,lng)]).then(([wa,r])=>{const loc=r&&r.name?r.name.split(',')[0]:'';fEl('fPlace').value=wa?wa.name+(loc?' · '+loc:''):(r&&r.name)||'';});
       fEl('fMsg').textContent='Fangstelle auf der Karte gesetzt.';setTimeout(()=>fEl('fForm').scrollIntoView({behavior:'smooth',block:'center'}),80);return;}
     const {lat,lng}=e.latlng;
     clickPopup=L.popup().setLatLng(e.latlng).setContent(
@@ -1345,7 +1457,7 @@ function initMap(){
     const b=e.target.closest('[data-mapact]');if(!b)return;
     e.stopPropagation();
     const lat=+b.dataset.lat,lng=+b.dataset.lng,act=b.dataset.mapact;
-    if(act==='place'){map.closePopup();setPlace('Kartenpunkt '+lat.toFixed(3)+', '+lng.toFixed(3),lat,lng);}
+    if(act==='place'){map.closePopup();Promise.all([waterAt(lat,lng),reverseName(lat,lng)]).then(([wa,rv])=>{const loc=(rv&&rv.name)||(lat.toFixed(3)+', '+lng.toFixed(3));setPlace(wa?wa.name+' · '+loc.split(',')[0]:loc,lat,lng,wa||{name:null,kind:''});});}
     else if(act==='catch'){map.closePopup();showTab('fang');if(fEl('fForm').hidden){endEdit();openForm();}fPos={lat,lng,src:'Karte'};showPos();schedulePreview();$('fMsg').textContent='Fangposition aus der Karte übernommen.';$('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});}
     else if(act==='edit'){map.closePopup();showTab('fang');startEdit(b.dataset.id);}
   });
@@ -1443,7 +1555,7 @@ async function formFind(){
   if(!all.length){box.innerHTML='<li class="sub">Nichts gefunden. Anders schreiben oder „Auf Karte wählen“.</li>';return;}
   box.innerHTML=all.map((p,i)=>`<li><button type="button" data-fi="${i}">${esc(p.name)}<small>${(+p.lat).toFixed(3)}, ${(+p.lng).toFixed(3)}</small></button></li>`).join('');
   box.onclick=e=>{const b=e.target.closest('[data-fi]');if(!b)return;const p=all[+b.dataset.fi];
-    fPos={lat:+p.lat,lng:+p.lng,src:'Suche'};fEl('fPlace').value=p.name.split(',')[0];box.innerHTML='';showPos();schedulePreview();};
+    fPos={lat:+p.lat,lng:+p.lng,src:'Suche'};fEl('fPlace').value=p.waterName||p.name.split(',')[0].replace(/\s*\([^)]*\)$/,'');box.innerHTML='';showPos();schedulePreview();};
 }
 let pickMode=false;
 function startPick(){pickMode=true;showTab('map');$('pickBar').hidden=false;
@@ -1476,6 +1588,7 @@ fEl('fFind').onclick=formFind;
 fEl('fPlace').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();formFind();}});
 fEl('fPick').onclick=startPick;
 $('pickCancel').onclick=()=>{endPick();showTab('fang');};
+fEl('fGps').addEventListener('click',()=>setTimeout(()=>{if(fPos.src&&String(fPos.src).startsWith('GPS'))waterAt(fPos.lat,fPos.lng).then(wa=>{if(wa)fEl('fPlace').value=wa.name;});},4000));
 fEl('fGps').onclick=()=>{
   if(!navigator.geolocation){fEl('fMsg').textContent='GPS wird hier nicht unterstützt.';return;}
   fEl('fMsg').textContent='GPS-Position wird abgefragt …';
@@ -1556,7 +1669,7 @@ async function backfillWeather(){
   backfilling=true;let n=0;
   try{
     for(const c of todo){
-      let data;try{data=await wxForTime(c.lat,c.lng,c.t,['ostsee','nordsee'].includes(c.water)?c.water:(isSea()?WTYPE():false));}catch(_){break;}
+      let data;try{data=await wxForTime(c.lat,c.lng,c.t,SEA_TYPES.includes(c.water)?c.water:(isSea()?WTYPE():false));}catch(_){break;}
       const snap=withContext({state:{lat:c.lat,lng:c.lng,species:SPECIES[c.speciesKey]?c.speciesKey:state.species,date:dstr(c.t)},wx:data},()=>{
         const a=analyze(),s=a.score(c.t);return {index:SPECIES[c.speciesKey]?s.total:null,W:s.W,prLabel:s.prLabel,time:s.timeLabel};});
       if(!c.moon){const il=moonIllum(new Date(c.t));c.moon=phaseName(il.phase);c.illum=Math.round(il.fraction*100);}
