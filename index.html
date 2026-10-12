@@ -429,7 +429,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-13b (alle Arten automatisch)</p>
+      <p class="note">Version 2026-10-13c (Arten je Ort)</p>
     </div>
   </section>
 </main>
@@ -662,7 +662,7 @@ Object.assign(SPECIES,{
   istavrit:{name:'Stöcker (İstavrit)',t:[10,14,22,26],act:{dusk:1,day:.8,night:.4},sky:{over:0,sun:0},moon:0,water:true,
     info:'Kleiner Schwarmfisch, mit Paternoster leicht zu fangen. Guter Köderfisch.'},
   hamsi:{name:'Sardelle (Hamsi)',t:[8,12,20,24],act:{dusk:1,day:.8,night:.3},sky:{over:0,sun:0},moon:0,season:[11,12,1,2,3],water:true,
-    info:'Schwarmfisch, im Schwarzen Meer vor allem im Winter in Küstennähe. Köderfisch.'},
+    info:'Schwarmfisch, in großen Mengen vor allem im Schwarzen Meer im Winter. Im Mittelmeer seltener in Küstennähe.'},
   kefal:{name:'Meeräsche (Kefal)',t:[12,16,26,29],act:{dusk:1,day:.8,night:.2},sky:{over:0,sun:0},moon:0,water:true,
     info:'Vorsichtiger Friedfisch in Häfen und Flussmündungen, beißt am besten mit feinem Gerät.'},
   kalkan:{name:'Steinbutt (Kalkan)',t:[6,9,16,19],act:{dusk:1,day:.5,night:.7},sky:{over:0,sun:0},moon:3,water:true,
@@ -678,6 +678,7 @@ Object.assign(SPECIES,{
 });
 SPECIES.wolfsbarsch.info='Küstenräuber in Brandung, Felsen und Flussmündungen (türkisch Levrek). Mindestmaße und Fangmengen je Land prüfen.';
 Object.assign(SPECIES,{
+  sardalya:{name:'Sardine (Sardalya)',t:[12,15,22,25],act:{dusk:1,day:.8,night:.3},sky:{over:0,sun:0},moon:0,water:true,info:'Kleiner Schwarmfisch im Mittelmeer, typischer Köderfisch.'},
   seelachs:{name:'Seelachs (Köhler)',t:[5,8,14,17],act:{dusk:1,day:.8,night:.3},sky:{over:3,sun:0},moon:0,water:true,info:'Schwarmräuber in Norwegen und der nördlichen Nordsee, oft über Unterwasserbergen und vor Felsküsten.'},
   pollack:{name:'Pollack',t:[7,10,15,18],act:{dusk:1,day:.6,night:.4},sky:{over:3,sun:-3},moon:0,water:true,info:'Standorttreuer Räuber an Kelpwäldern und Felsriffen. Beißt am besten in der Dämmerung.'},
   leng:{name:'Leng',t:[5,7,12,15],act:{dusk:.8,day:.8,night:.8},sky:{over:0,sun:0},moon:0,water:true,info:'Tiefseefisch über Wracks und Felsen, meist ab 80 m Tiefe. Tageszeit spielt in der Tiefe kaum eine Rolle.'},
@@ -691,11 +692,11 @@ const SCI={wels:'Silurus glanis',zander:'Sander lucioperca',hecht:'Esox lucius',
   bachforelle:'Salmo trutta',regenbogenforelle:'Oncorhynchus mykiss',aesche:'Thymallus thymallus',doebel:'Squalius cephalus',barbe:'Barbus barbus',saibling:'Salvelinus alpinus',lachs:'Salmo salar',
   meerforelle:'Salmo trutta',hornhecht:'Belone belone',plattfisch:'Platichthys flesus',makrele:'Scomber scombrus',wolfsbarsch:'Dicentrarchus labrax',hering:'Clupea harengus',
   sandaal:'Ammodytes tobianus',grundel:'Neogobius melanostomus',sprotte:'Sprattus sprattus',dorsch:'Gadus morhua',lufer:'Pomatomus saltatrix',istavrit:'Trachurus trachurus',
-  hamsi:'Engraulis encrasicolus',kefal:'Mugil cephalus',kalkan:'Scophthalmus maximus',mezgit:'Merlangius merlangus',barbun:'Mullus barbatus',palamut:'Sarda sarda',dorade:'Sparus aurata',
+  hamsi:'Engraulis encrasicolus',sardalya:'Sardina pilchardus',kefal:'Mugil cephalus',kalkan:'Scophthalmus maximus',mezgit:'Merlangius merlangus',barbun:'Mullus barbatus',palamut:'Sarda sarda',dorade:'Sparus aurata',
   seelachs:'Pollachius virens',pollack:'Pollachius pollachius',leng:'Molva molva',heilbutt:'Hippoglossus hippoglossus'};
 const FRESH=['wels','zander','hecht','aal','karpfen','rapfen','schleie','bachforelle','regenbogenforelle','lachs','saibling','barbe','aesche','doebel','barsch','rotauge','gruendling','ukelei','rotfeder','brasse'];
-const MARINE=['dorsch','seelachs','pollack','leng','heilbutt','meerforelle','wolfsbarsch','lufer','palamut','dorade','makrele','hornhecht','plattfisch','kalkan','mezgit','barbun','kefal','hering','sandaal','grundel','sprotte','istavrit','hamsi'];
-const BAIT=new Set(['barsch','rotauge','gruendling','ukelei','rotfeder','brasse','hering','sandaal','grundel','sprotte','istavrit','hamsi']);
+const MARINE=['dorsch','seelachs','pollack','leng','heilbutt','meerforelle','wolfsbarsch','lufer','palamut','dorade','makrele','hornhecht','plattfisch','kalkan','mezgit','barbun','kefal','hering','sandaal','grundel','sprotte','istavrit','hamsi','sardalya'];
+const BAIT=new Set(['sardalya','barsch','rotauge','gruendling','ukelei','rotfeder','brasse','hering','sandaal','grundel','sprotte','istavrit','hamsi']);
 let gbif={};try{gbif=JSON.parse(localStorage.getItem('beissindex:gbif')||'{}');}catch(_){gbif={};}
 let gbifBusy=null;
 async function loadGBIF(lat,lng,sea){
@@ -744,8 +745,10 @@ async function loadGBIFAll(lat,lng,sea){
   try{
     if(!gbifClass){const r=await fetch('https://api.gbif.org/v1/species/match?rank=CLASS&strict=true&name=Actinopterygii');if(r.ok){gbifClass=(await r.json()).usageKey||null;try{localStorage.setItem('beissindex:gbifclass',String(gbifClass));}catch(_){}}}
     if(!gbifClass)return null;
-    const r=await fetch(`https://api.gbif.org/v1/occurrence/search?limit=0&hasCoordinate=true&classKey=${gbifClass}&geoDistance=${G2(lat)},${G2(lng)},30km&facet=speciesKey&facetLimit=40&facetMincount=3`);
-    if(!r.ok)return null;const j=await r.json();
+    const q=km=>fetch(`https://api.gbif.org/v1/occurrence/search?limit=0&hasCoordinate=true&classKey=${gbifClass}&geoDistance=${G2(lat)},${G2(lng)},${km}km&facet=speciesKey&facetLimit=60&facetMincount=3`).then(r=>r.ok?r.json():null);
+    let km=30,j=await q(30);
+    if(!j)return null;
+    if((j.count||0)<300){const j2=await q(75);if(j2&&(j2.count||0)>(j.count||0)){j=j2;km=75;}}
     const list=((j.facets&&j.facets[0]&&j.facets[0].counts)||[]).map(c=>({k:c.name,c:c.count}));
     // Namen nachladen (einmalig je Art, danach aus dem Speicher)
     const need=list.filter(x=>!gbifSp[x.k]);
@@ -756,7 +759,8 @@ async function loadGBIFAll(lat,lng,sea){
     }));
     try{localStorage.setItem('beissindex:gbifsp',JSON.stringify(gbifSp));}catch(_){}
     registerDynamic();
-    const res={t:Date.now(),list};gbifAll[key]=res;
+    const counts={};for(const x of list){const s=gbifSp[x.k];if(s&&s.sci)counts[s.sci]=(counts[s.sci]||0)+x.c;}
+    const res={t:Date.now(),list,counts,km,total:j.count||0};gbifAll[key]=res;
     const ks=Object.keys(gbifAll);if(ks.length>30)delete gbifAll[ks[0]];
     try{localStorage.setItem('beissindex:gbifall',JSON.stringify(gbifAll));}catch(_){}
     return res;
@@ -767,15 +771,17 @@ function extraSpecies(){
   return g.list.map(x=>gbifSp[x.k]&&!SCI_REV[gbifSp[x.k].sci]?'g'+x.k:null).filter(k=>k&&SPECIES[k]).slice(0,25);
 }
 function speciesLists(){
-  const W=WATERS[WTYPE()],sea=isSea(),key=G2(state.lat)+','+G2(state.lng)+'|'+(sea?'m':'f'),g=gbif[key];
+  const W=WATERS[WTYPE()],sea=isSea(),key=G2(state.lat)+','+G2(state.lng)+'|'+(sea?'m':'f'),ga=gbifAll[G2(state.lat)+','+G2(state.lng)];
+  const pool0=sea?MARINE:FRESH,enough=c=>c&&pool0.filter(k=>(c[SCI[k]]||0)>=10).length>=3;
+  const g=ga&&enough(ga.counts)?{counts:ga.counts}:(gbif[key]||(ga&&ga.counts?{counts:ga.counts}:null));
   const extra=extraSpecies();
   if(!g)return {big:W.big,bait:W.bait,banned:W.banned,extra,src:'typisch'};
   const pool=sea?MARINE:FRESH;
-  const found=pool.filter(k=>(g.counts[SCI[k]]||0)>=3).sort((a,b)=>(g.counts[SCI[b]]||0)-(g.counts[SCI[a]]||0));
+  const found=pool.filter(k=>(g.counts[SCI[k]]||0)>=10).sort((a,b)=>(g.counts[SCI[b]]||0)-(g.counts[SCI[a]]||0));
   if(found.length<3)return {big:W.big,bait:W.bait,banned:W.banned,extra,src:'typisch'};
   const big=found.filter(k=>!BAIT.has(k)),bait=found.filter(k=>BAIT.has(k));
   const banned=found.filter(isBanned);
-  return {big:big.filter(k=>!isBanned(k)),bait,banned,extra,src:'gbif',counts:g.counts};
+  return {big:big.filter(k=>!isBanned(k)),bait,banned,extra,src:'gbif',counts:g.counts,km:ga&&ga.km||30};
 }
 const WATERS={
   binnen:{name:'Binnengewässer (See/Fluss)',big:['wels','zander','hecht','aal','karpfen','rapfen','schleie'],bait:['barsch','rotauge','gruendling','ukelei','rotfeder','brasse']},
@@ -784,7 +790,7 @@ const WATERS={
   bergland:{name:'Bergland (Forellengewässer)',big:['bachforelle','regenbogenforelle','hecht','barbe','aesche','doebel'],bait:['gruendling','rotauge']},
   schwarzmeer:{name:'Schwarzes Meer',big:['lufer','palamut','wolfsbarsch','kalkan','mezgit','kefal','barbun'],bait:['istavrit','hamsi']},
   marmara:{name:'Marmarameer / Bosporus',big:['lufer','palamut','wolfsbarsch','dorade','barbun','kefal'],bait:['istavrit','hamsi']},
-  mittelmeer:{name:'Mittelmeer',big:['wolfsbarsch','dorade','lufer','barbun','kefal'],bait:['istavrit','hamsi']},
+  mittelmeer:{name:'Mittelmeer',big:['wolfsbarsch','dorade','lufer','barbun','kefal'],bait:['istavrit','sardalya']},
   atlantik:{name:'Meer (Küste)',big:['wolfsbarsch','makrele','plattfisch','dorade','hornhecht'],bait:['sandaal','hering','sprotte']}
 };
 const SEA_TYPES=['ostsee','nordsee','schwarzmeer','marmara','mittelmeer','atlantik'];
@@ -1507,8 +1513,7 @@ async function setPlace(name,lat,lng,knownWater){
   if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
   detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();speciesChips();fillSpeciesSelect();render();}});
   loadPegel(true).then(render);
-  loadGBIF(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(g&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});
-  loadGBIFAll(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(g&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});
+  loadGBIFAll(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(wxKey()!==myKey)return;if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g2=>{if(g2&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});});
   if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
     if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;}
   await loadWeather(true);render();
@@ -1618,8 +1623,8 @@ function speciesChips(){
     <p class="label grp">Köder- &amp; Kleinfische</p><div class="chiprow">${W.bait.filter(k=>!W.big.includes(k)).map(chip).join('')}</div>
     ${W.extra&&W.extra.length?`<p class="label grp">Weitere nachgewiesene Arten</p><div class="chiprow">${W.extra.map(chip).join('')}</div>`:''}
     ${W.banned&&W.banned.length?`<p class="label grp">Gesperrt</p><div class="chiprow">${W.banned.map(chip).join('')}</div>`:''}
-    <p class="sub" style="font-size:.78rem;margin:6px 2px 0">${W.src==='gbif'?'Arten nach Nachweisen im Umkreis von 30 km (GBIF), häufigste zuerst.':'Typische Arten für diesen Gewässertyp. Nachweise für den Ort werden geladen, sobald Netz da ist.'}</p>`;
-  $('waterSel').onchange=async e=>{state.waterMode=e.target.value;persist();loadGBIF(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();render();await loadWeather(true);render();};
+    <p class="sub" style="font-size:.78rem;margin:6px 2px 0">${W.src==='gbif'?`Arten nach Nachweisen im Umkreis von ${W.km||30} km (GBIF), häufigste zuerst.`:'⏳ Ortsgenaue Artenliste wird geladen. Bis dahin: typische Arten des Gewässertyps, nicht ortsgenau.'}</p>`;
+  $('waterSel').onchange=async e=>{state.waterMode=e.target.value;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();render();await loadWeather(true);render();};
   el.onclick=e=>{const b=e.target.closest('button');if(!b)return;state.species=b.dataset.v;persist();speciesChips();render();};
 }
 speciesChips();
@@ -2299,8 +2304,7 @@ loadWeather(false).then(render);
 loadCommunity();
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
-loadGBIF(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});
-loadGBIFAll(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});
+loadGBIFAll(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,isSea()).then(g2=>{if(g2){speciesChips();fillSpeciesSelect();render();}});});
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
   if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
   try{localStorage.setItem('beissindex:waterKey',k);}catch(_){}
