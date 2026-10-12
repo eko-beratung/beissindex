@@ -86,6 +86,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .bhours .l0{background:#2fbf75}.bhours .l1{background:#f0a83a}.bhours .l2{background:#ff5a45}.bhours .lx{background:var(--chip)}
 .bhours button.sel{outline:2px solid #fff;outline-offset:1px}
 .bhlabels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:3px}
+.ov{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ov li button{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 34% 2.6em;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;color:var(--ink);cursor:pointer;text-align:left}
+.ov li button[aria-current="true"]{border-color:var(--accent2)}
+.ov .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ov .nm small{display:block;font-weight:400;color:var(--muted);font-size:.76rem}
+.ov .bar{height:8px;border-radius:4px;background:var(--chip);position:relative;overflow:hidden}.ov .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.ov .v{font-weight:800;text-align:right;font-size:1.05rem}
+.species .chiprow button .sc{display:inline-block;margin-left:6px;font-size:.78rem;font-weight:800;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.08)}
+.species .chiprow button[aria-pressed="true"] .sc{background:rgba(0,0,0,.12)}
 .when{display:inline-flex;align-items:center;gap:6px;font-size:.86rem;font-weight:700;padding:5px 11px;border-radius:999px;margin:-2px 0 12px;background:rgba(61,220,132,.14);color:#8ff0b8}
 .when.past{background:rgba(255,181,71,.16);color:#ffd38a}.when.future{background:rgba(95,208,255,.14);color:#9fe3ff}
 .whenhead{color:var(--accent2)}
@@ -283,6 +291,12 @@ body.sheet-open{overflow:hidden}
     <p class="rule" id="speciesRule"></p>
     <div class="winfo" id="waterInfo"></div>
 
+    <div class="card ovcard">
+      <div class="cardhead"><h2>Alle Arten</h2><span class="cond" id="ovWhen"></span></div>
+      <ul class="ov" id="ovList"></ul>
+      <button type="button" class="infobtn" id="ovMore" hidden></button>
+    </div>
+
     <div class="card gauge">
       <div class="gside"><div class="glabel">Beste Zeiten</div><div class="gval" id="gLeft">–</div></div>
       <div class="ring">
@@ -429,7 +443,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-13c (Arten je Ort)</p>
+      <p class="note">Version 2026-10-13d (alle Arten auf einen Blick)</p>
     </div>
   </section>
 </main>
@@ -1288,7 +1302,33 @@ function closePlace(){if(history.state&&history.state.sheet===4)history.back();e
 $('placeBtn').onclick=openPlace;$('oClose').onclick=closePlace;
 window.addEventListener('popstate',()=>{if(!$('oSheet').hidden){$('oSheet').hidden=true;document.body.classList.remove('sheet-open');}});
 const dayLabel=t=>new Date(t).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
+/* ---------- Übersicht: Index für alle Arten gleichzeitig ---------- */
+let ovTimer=null,ovAll=false;
+function scheduleOverview(){clearTimeout(ovTimer);ovTimer=setTimeout(renderOverview,120);}
+function renderOverview(){
+  if(!A)return;
+  const W=speciesLists(),keys=[...new Set([...W.big,...W.bait,...(W.banned||[])])];
+  const now=Date.now(),isToday=now>=A.ds&&now<A.de,t=selT!=null?selT:(isToday?now:null);
+  const rows=keys.map(k=>withContext({state:{lat:state.lat,lng:state.lng,species:k,date:state.date},wx},()=>{
+    const a=analyze(),pts=a.series.filter(p=>p.t<a.de);const best=pts.reduce((x,y)=>y.total>x.total?y:x,pts[0]);
+    const s=t!=null?a.score(t):best;const bl=blocked(t!=null?t:best.t);
+    return {k,v:bl?null:s.total,bl,best:best.total,bt:best.t,bait:BAIT.has(k)};
+  }));
+  // Zahlen an den Artenknöpfen
+  for(const r of rows){const el=document.querySelector(`.species [data-sc="${r.k}"]`);if(el){const [,c]=verdict(r.v||0);el.textContent=r.bl?'🔒':r.v;el.style.color=r.bl?'var(--bad)':c;}}
+  rows.sort((a,b)=>(b.v??-1)-(a.v??-1));
+  const show=ovAll?rows:rows.slice(0,6);
+  $('ovWhen').textContent=t!=null?(selT!=null||!isToday?'um '+fmt(t)+' Uhr':'jetzt'):'Tagesbestwert';
+  $('ovList').innerHTML=show.map(r=>{const [,c]=verdict(r.v||0);
+    return `<li><button type="button" data-ov="${r.k}"${r.k===state.species?' aria-current="true"':''}><span class="nm">${esc(SPECIES[r.k].name)}<small>${r.bl?r.bl:'Bestwert '+r.best+' um '+fmt(r.bt)+(r.bait?' · Köderfisch':'')}</small></span>
+      <span class="bar"><i style="width:${r.bl?0:r.v}%;background:${c}"></i></span><span class="v" style="color:${r.bl?'var(--bad)':c}">${r.bl?'🔒':r.v}</span></button></li>`;}).join('');
+  $('ovMore').hidden=rows.length<=6;$('ovMore').textContent=ovAll?'Weniger anzeigen':`Alle ${rows.length} Arten anzeigen`;
+}
+$('ovList').addEventListener('click',e=>{const b=e.target.closest('[data-ov]');if(!b)return;state.species=b.dataset.ov;persist();speciesChips();fillSpeciesSelect();render();
+  document.querySelector('.gauge').scrollIntoView({behavior:'smooth',block:'center'});});
+$('ovMore').onclick=()=>{ovAll=!ovAll;renderOverview();};
 function renderDetail(){
+  scheduleOverview();
   const {ds,de,best}=A,now=Date.now(),isToday=now>=ds&&now<de;
   const t=selT!=null?selT:(isToday?now:best.t);
   const shown={t,...A.score(t)};
@@ -1620,7 +1660,7 @@ function speciesChips(){
   const el=$('species'),W=speciesLists();
   const all=[...W.big,...W.bait,...(W.banned||[]),...(W.extra||[])];
   if(!all.includes(state.species)){state.species=W.big[0]||W.bait[0]||(W.extra||[])[0];persist();}
-  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${isBanned(k)?'⛔ ':''}${SPECIES[k].danger?'⚠ ':''}${SPECIES[k].name}</button>`;
+  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${isBanned(k)?'⛔ ':''}${SPECIES[k].danger?'⚠ ':''}${SPECIES[k].name}<span class="sc" data-sc="${k}"></span></button>`;
   const auto=state.waterMode==='auto';
   el.innerHTML=`<div class="wrow"><label class="label" for="waterSel">Gewässer</label><select id="waterSel">
       <option value="auto"${auto?' selected':''}>Automatisch: ${WATERS[state.waterAuto].name}</option>
