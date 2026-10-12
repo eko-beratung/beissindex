@@ -179,6 +179,7 @@ svg.chart{display:block;width:100%;height:auto;touch-action:pan-y}
 .multi label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
 .multi .chiprow{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .multi .chiprow button{background:var(--chip);color:var(--ink);border:0;border-radius:999px;padding:6px 12px;font-size:.88rem;cursor:pointer}
+.pickbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.pickbtns .btn{min-height:44px;font-size:.9rem}
 .wxprev{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:.9rem;min-height:44px}
 .wxprev b{color:var(--ink)}.wxprev .sub{font-size:.82rem}
 .calbadge{display:inline-block;margin-bottom:4px;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(167,139,250,.18);color:#c9b8ff}
@@ -411,7 +412,8 @@ body.sheet-open{overflow:hidden}
   <section class="tab" id="tab-map" hidden>
     <div class="card" id="kartebox">
       <div class="cardhead"><h2>Karte</h2><button type="button" class="infobtn" id="mapFit">Alle Fänge</button></div>
-      <div class="pickbar" id="pickBar" hidden><span>Tippe auf die Stelle, an der du gefangen hast.</span><button type="button" class="roundbtn" id="pickCancel">Abbrechen</button></div>
+      <div class="pickbtns"><button type="button" class="btn ghost" id="pickPlaceBtn">📍 Standort setzen</button><button type="button" class="btn ghost" id="pickCatchBtn">🎣 Fang markieren</button></div>
+      <div class="pickbar" id="pickBar" hidden><span id="pickText">Tippe auf die Stelle, an der du gefangen hast.</span><button type="button" class="roundbtn" id="pickCancel">Abbrechen</button></div>
       <div id="map" role="application" aria-label="Karte mit Standort und Fängen"></div>
       <div class="legend maplegend"><span class="mk-place">Standort</span><span class="mk-fang">Fang</span><span class="mk-biss">Biss</span><span class="mk-null">Nullnummer</span><span class="mk-comm">Community</span></div>
       <label class="commtoggle" id="mapCommWrap" hidden><input type="checkbox" id="mapComm" checked> Community-Fänge anzeigen (<span id="mapCommN">0</span>)</label>
@@ -443,7 +445,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-13d (alle Arten auf einen Blick)</p>
+      <p class="note">Version 2026-10-14 (Markieren auf der Karte)</p>
     </div>
   </section>
 </main>
@@ -467,6 +469,7 @@ body.sheet-open{overflow:hidden}
       </div>
       <ul class="hits" id="hits"></ul>
       <div class="msg" id="locMsg"></div>
+      <div class="pickbtns"><button type="button" class="btn ghost" id="oPickPlace">🗺️ Standort auf der Karte setzen</button><button type="button" class="btn ghost" id="oPickCatch">🎣 Fang auf der Karte markieren</button></div>
       <div class="spots"><h3>Meine Plätze</h3><div class="chiprow" id="spotList"></div><button type="button" class="infobtn" id="spotSave">☆ Aktuellen Ort speichern</button><span class="spotform" id="spotForm" hidden><input type="text" id="spotName" maxlength="60" aria-label="Name des Platzes"><button type="button" class="infobtn" id="spotOk">Speichern</button></span></div>
     </div>
   </div>
@@ -1695,6 +1698,9 @@ function initMap(){
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
   catchLayer=L.layerGroup().addTo(map);
   map.on('click',e=>{
+    if(pickMode==='place'){const {lat,lng}=e.latlng;endPick();showTab('prog');toast('Standort wird gesetzt …',false,0);
+      Promise.all([waterAt(lat,lng),reverseName(lat,lng)]).then(([wa,rv])=>{const loc=(rv&&rv.name)||(lat.toFixed(3)+', '+lng.toFixed(3));
+        setPlace(wa?wa.name+' · '+loc.split(',')[0]:loc,lat,lng,wa||{name:null,kind:''});toast('Standort gesetzt: '+(wa?wa.name+' · ':'')+loc.split(',')[0]);});return;}
     if(pickMode){const {lat,lng}=e.latlng;fPos={lat,lng,src:'Karte'};endPick();showTab('fang');showPos();schedulePreview();
       if(!fEl('fPlace').value.trim()||fEl('fPlace').value===state.place.replace(/^📍\s*/,''))Promise.all([waterAt(lat,lng),reverseName(lat,lng)]).then(([wa,r])=>{const loc=r&&r.name?r.name.split(',')[0]:'';fEl('fPlace').value=wa?wa.name+(loc?' · '+loc:''):(r&&r.name)||'';});
       fEl('fMsg').textContent='Fangstelle auf der Karte gesetzt.';setTimeout(()=>fEl('fForm').scrollIntoView({behavior:'smooth',block:'center'}),80);return;}
@@ -1809,9 +1815,17 @@ async function formFind(){
     fPos={lat:+p.lat,lng:+p.lng,src:'Suche'};fEl('fPlace').value=p.waterName||p.name.split(',')[0].replace(/\s*\([^)]*\)$/,'');box.innerHTML='';showPos();schedulePreview();};
 }
 let pickMode=false;
-function startPick(){pickMode=true;showTab('map');$('pickBar').hidden=false;
-  setTimeout(()=>{if(map){map.setView([fPos.lat,fPos.lng],Math.max(map.getZoom(),14));}},120);}
+function startPick(target){
+  pickMode=target==='place'?'place':'catch';showTab('map');$('pickBar').hidden=false;
+  $('pickText').textContent=pickMode==='place'?'Tippe auf die Stelle, für die Index, Wetter und Arten gelten sollen.':'Tippe auf die Stelle, an der du gefangen hast.';
+  const c=pickMode==='place'?[state.lat,state.lng]:[fPos.lat,fPos.lng];
+  setTimeout(()=>{if(map){map.setView(c,Math.max(map.getZoom(),14));}},120);
+}
 function endPick(){pickMode=false;$('pickBar').hidden=true;}
+function startCatchPick(){
+  if(fEl('fForm').hidden){endEdit();openForm();if(typeof syncResultUI==='function')syncResultUI();}
+  startPick('catch');
+}
 function syncFormPlace(){fPos={lat:state.lat,lng:state.lng,src:'Suchort'};fEl('fPlace').value=state.place.replace(/^📍\s*/,'');showPos();}
 const SRC_TXT={'Suchort':'vom gewählten Ort oben übernommen','Karte':'auf der Karte gewählt','Suche':'über die Suche gefunden','gespeicherte Position':'gespeicherte Position'};
 function showPos(){
@@ -1837,8 +1851,12 @@ function initForm(){
 }
 fEl('fFind').onclick=formFind;
 fEl('fPlace').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();formFind();}});
-fEl('fPick').onclick=startPick;
-$('pickCancel').onclick=()=>{endPick();showTab('fang');};
+fEl('fPick').onclick=()=>startPick('catch');
+$('pickPlaceBtn').onclick=()=>startPick('place');
+$('pickCatchBtn').onclick=startCatchPick;
+$('oPickPlace').onclick=()=>{closePlace();setTimeout(()=>startPick('place'),60);};
+$('oPickCatch').onclick=()=>{closePlace();setTimeout(startCatchPick,60);};
+$('pickCancel').onclick=()=>{const was=pickMode;endPick();showTab(was==='place'?'prog':'fang');};
 fEl('fGps').addEventListener('click',()=>setTimeout(()=>{if(fPos.src&&String(fPos.src).startsWith('GPS'))waterAt(fPos.lat,fPos.lng).then(wa=>{if(wa)fEl('fPlace').value=wa.name;});},4000));
 fEl('fGps').onclick=()=>{
   if(!navigator.geolocation){fEl('fMsg').textContent='GPS wird hier nicht unterstützt.';return;}
