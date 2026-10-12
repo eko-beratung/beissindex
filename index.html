@@ -71,6 +71,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .wave{grid-column:1/-1;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(95,208,255,.10);border:1px solid rgba(95,208,255,.25);font-size:.9rem}
 .wave b{font-size:1rem}.wave.rough{background:rgba(255,107,90,.12);border-color:rgba(255,107,90,.4)}
+.fia{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(95,208,255,.08);border:1px solid rgba(95,208,255,.25);font-size:.9rem}
+.fia .fh{font-weight:800;margin-bottom:4px}.fia.verboten{background:rgba(255,107,90,.12);border-color:rgba(255,107,90,.45)}.fia.eigentuemer{background:rgba(255,181,71,.12);border-color:rgba(255,181,71,.4)}
+.fia hr{border:0;border-top:1px solid var(--line);margin:6px 0}.fia a{color:var(--accent2)}
 .winfo{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin:0 0 14px;font-size:.9rem}
 .winfo .wn{font-weight:700;font-size:1rem}.winfo .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .winfo input{flex:1;min-width:10em}
@@ -445,7 +448,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-14 (Markieren auf der Karte)</p>
+      <p class="note">Version 2026-10-14b (Angelkarten Berlin amtlich)</p>
     </div>
   </section>
 </main>
@@ -1181,6 +1184,47 @@ function regionHint(){
   if(r)return 'Wer ein Gewässer bewirtschaftet (Verband, Verein, Genossenschaft, privat), ist regional verschieden. Vor dem Angeln die Angelkarte klären.';
   return '';
 }
+/* ---------- Berlin: amtliche Angaben des Fischereiamts (Geoportal Berlin, WFS „Angelgewässer in Berlin“, Lizenz dl-de/zero-2.0) ---------- */
+let fia=null,fiaKey=null,fiaBusy=null;
+const inBerlinBox=(la,lo)=>la>52.3&&la<52.7&&lo>12.98&&lo<13.97;
+async function loadFIA(lat,lng){
+  const key=G3(lat)+','+G3(lng);
+  if(fiaKey===key)return fia;if(fiaBusy===key)return null;
+  if(!inBerlinBox(+lat,+lng)){fia=null;fiaKey=key;return null;}
+  fiaBusy=key;
+  const la=+G3(lat),lo=+G3(lng),d=0.0012;
+  const layers=[['f_angel_gew_verboten','verboten'],['d_angel_gew_eigentuemer','eigentuemer'],['c_angel_gew','karte'],['e_angel_gew_ausgabe_unbekannt','unbekannt']];
+  const res=await Promise.all(layers.map(async([ly,kind])=>{
+    try{const u='https://gdi.berlin.de/services/wfs/angelgewaesser?service=WFS&version=2.0.0&request=GetFeature&typeNames=angelgewaesser:'+ly+
+      '&outputFormat=application/json&srsName=EPSG:4326&count=3&bbox='+(la-d)+','+(lo-d)+','+(la+d)+','+(lo+d)+',urn:ogc:def:crs:EPSG::4326';
+      const r=await fetch(u,{cache:'no-store'});if(!r.ok)return [];const j=await r.json();
+      return (j.features||[]).map(f=>({kind,props:f.properties||{}}));}catch(_){return null;}
+  }));
+  fiaBusy=null;
+  if(res.every(x=>x===null)){return null;}           // Dienst nicht erreichbar
+  const all=res.flat().filter(Boolean),order=['verboten','eigentuemer','karte','unbekannt'];
+  all.sort((a,b)=>order.indexOf(a.kind)-order.indexOf(b.kind));
+  fia={hits:all,t:Date.now()};fiaKey=key;
+  // Gewässername aus den amtlichen Daten übernehmen, falls OpenStreetMap keinen geliefert hat
+  if(all.length&&!state.waterName){const p=all[0].props,k=Object.keys(p).find(k=>/gew(ae|ä)sser|^name$|bezeichnung/i.test(k)&&typeof p[k]==='string'&&p[k].trim());if(k){state.waterName=p[k].trim().slice(0,60);state.waterKind='';persist();}}
+  return fia;
+}
+const FIA_SKIP=/^(id|gml_?id|objectid|fid|geom|the_geom|shape.*|flaeche.*|area|bbox|uuid|link_?)$/i;
+function fiaProps(p){
+  return Object.entries(p).filter(([k,v])=>v!=null&&String(v).trim()!==''&&typeof v!=='object'&&!FIA_SKIP.test(k)).slice(0,8)
+    .map(([k,v])=>{const lbl=k.replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());const s=String(v).trim();
+      const val=/^https?:\/\//.test(s)?`<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s)}</a>`:/^[\d\s()+\/-]{6,}$/.test(s)?`<a href="tel:${esc(s.replace(/[^\d+]/g,''))}">${esc(s)}</a>`:esc(s);
+      return `<div><span class="sub">${esc(lbl)}:</span> ${val}</div>`;}).join('');
+}
+function fiaHTML(){
+  if(!inBerlinBox(state.lat,state.lng))return '';
+  if(!fia)return fiaKey===G3(state.lat)+','+G3(state.lng)?'':'<div class="fia sub">Amtliche Angaben des Fischereiamts werden geladen …</div>';
+  if(!fia.hits.length)return state.region&&state.region!=='Berlin'?'':'<div class="fia sub">Für diesen Punkt hat das Fischereiamt Berlin kein Angelgewässer verzeichnet. Liegt der Punkt am Ufer, auf der Karte direkt aufs Wasser tippen.</div>';
+  const h0=fia.hits[0];
+  const head={verboten:'⛔ Angeln verboten (laut Fischereiamt Berlin)',eigentuemer:'🔒 Angeln nur den Eigentümern erlaubt',karte:'🎫 Angelkarte laut Fischereiamt Berlin',unbekannt:'❔ Ausgabestelle der Angelkarten ist dem Fischereiamt nicht bekannt'}[h0.kind];
+  const more=fia.hits.filter(x=>x.kind===h0.kind).slice(0,2);
+  return `<div class="fia ${h0.kind}"><div class="fh">${head}</div>${more.map(x=>fiaProps(x.props)).join('<hr>')}<div class="sub" style="margin-top:6px">Quelle: Fischereiamt Berlin, Geoportal Berlin (Datenlizenz Deutschland – Zero 2.0). Abschnittsgrenzen beachten.</div></div>`;
+}
 function renderWaterInfo(){
   const el=$('waterInfo');if(!el)return;
   if(isSea()){el.hidden=true;return;}el.hidden=false;
@@ -1192,7 +1236,7 @@ function renderWaterInfo(){
       :`<div>Bewirtschafter / Angelkarte: ${note?'<b>'+esc(note)+'</b>':'<span class="sub">nicht hinterlegt</span>'}</div>`)+
     `<div class="row"><button type="button" class="infobtn" id="wnEditBtn">✎ ${note?'Ändern':'Eintragen'}</button><a class="infobtn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/search?q=${q}">🔎 Websuche</a></div>`+
     `<div class="sub" style="margin-top:6px">Kanäle und Flüsse sind oft abschnittsweise verschiedenen Vereinen zugeordnet. Gefundenes oben als Notiz eintragen.</div>`+
-    (regionHint()?`<div class="sub" style="margin-top:6px">${esc(regionHint())}</div>`:'');
+    fiaHTML()+(fia&&fia.hits&&fia.hits.length?'':(regionHint()?`<div class="sub" style="margin-top:6px">${esc(regionHint())}</div>`:''));
 }
 document.addEventListener('click',e=>{
   if(e.target.id==='wnEditBtn'){wnEdit=true;renderWaterInfo();const i=$('wnInput');if(i)i.focus();}
@@ -1561,6 +1605,7 @@ async function setPlace(name,lat,lng,knownWater){
   if(wxKey()!==myKey)return; // inzwischen wurde ein anderer Ort gewählt
   if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
   detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();speciesChips();fillSpeciesSelect();render();}});
+  loadFIA(state.lat,state.lng).then(()=>{if(wxKey()===myKey)renderWaterInfo();});
   loadPegel(true).then(render);
   loadGBIFAll(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(wxKey()!==myKey)return;if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g2=>{if(g2&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});});
   if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
@@ -2368,6 +2413,7 @@ loadWeather(false).then(render);
 loadCommunity();
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
+loadFIA(state.lat,state.lng).then(renderWaterInfo);
 loadGBIFAll(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,isSea()).then(g2=>{if(g2){speciesChips();fillSpeciesSelect();render();}});});
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
   if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
