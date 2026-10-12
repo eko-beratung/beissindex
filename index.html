@@ -794,10 +794,10 @@ async function fetchWx(lat,lng,past,fwd,sea){
     ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m,wc:h.weather_code||null,vis:h.visibility||null,sst:null};
   if(sea){
     try{
-      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_surface_temperature,wave_height,wave_period,wave_direction&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
+      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_surface_temperature,wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
       if(m.ok){const mj=(await m.json()).hourly;
         const al=key=>{const arr=mj[key];if(!arr)return null;const mp=new Map();mj.time.forEach((x,i)=>{if(arr[i]!=null)mp.set(x*1000,arr[i]);});return mp.size?out.t.map(x=>mp.has(x)?mp.get(x):null):null;};
-        out.sst=al('sea_surface_temperature');out.wh=al('wave_height');out.wp=al('wave_period');out.wd=al('wave_direction');}
+        out.sst=al('sea_surface_temperature');out.wh=al('wave_height');out.wp=al('wave_period');out.wd=al('wave_direction');out.cu=al('ocean_current_velocity');out.cd=al('ocean_current_direction');}
     }catch(_){}
   }
   if(sea==='nordsee'){
@@ -880,7 +880,7 @@ function wxAt(t){
   else if(pg){t72=pg.value;wsrc='pegel';}
   const sstv=D.sst&&D.sst[i]!=null?D.sst[i]:null;
   const fixed=wsrc==='manual'||wsrc==='pegel';
-  const wave=D.wh&&D.wh[i]!=null?{h:D.wh[i],p:D.wp?D.wp[i]:null,d:D.wd?D.wd[i]:null}:null;
+  const wave=D.wh&&D.wh[i]!=null?{h:D.wh[i],p:D.wp?D.wp[i]:null,d:D.wd?D.wd[i]:null,cur:D.cu?D.cu[i]:null,curd:D.cd?D.cd[i]:null}:null;
   const wc=D.wc?D.wc[i]:null,vis=D.vis?D.vis[i]:null;
   return {wc,vis,wave,dt:sstv!=null||fixed?null:dt,t72:fixed?t72:(sstv!=null?sstv:t72),sst:fixed?null:sstv,wsrc,p:D.p[i],dp:D.p[i]-D.p[i-3],rh:D.rh[i],cc:D.cc[i],ws:D.ws[i],wg:D.wg[i],pr:D.pr[i],tmp:D.tmp[i]};
 }
@@ -1119,25 +1119,32 @@ document.addEventListener('click',e=>{
 });
 /* ---------- Boot: Ampel für kleine Boote ----------
    Grenzwerte als vorsichtige Faustregeln für offene bzw. kleine GFK-Boote. */
+const BOATDARK='dark';
 const BOAT={small:{windOk:19,windStop:29,gustStop:40,waveOk:0.3,waveStop:0.6},
             mid:{windOk:28,windStop:38,gustStop:50,waveOk:0.6,waveStop:1.0},
             big:{windOk:38,windStop:49,gustStop:62,waveOk:1.0,waveStop:1.8}};
+const BOAT_IN={small:{windOk:24,windStop:38,gustStop:55},mid:{windOk:29,windStop:45,gustStop:62},big:{windOk:38,windStop:50,gustStop:70}};
 let boatType='small';try{boatType=localStorage.getItem('beissindex:boat')||'small';}catch(_){}
 const BFT=k=>{const b=[1,6,12,20,29,39,50,62,75,89,103,118];let n=0;while(n<b.length&&k>=b[n])n++;return n;};
 function boatAssess(W,t){
   if(!W)return null;
-  const P=BOAT[boatType]||BOAT.small,why=[];let lv=0;const up=(l,txt,info)=>{lv=Math.max(lv,l);why.push({l,txt,info});};
+  const sea=isSea(),P=(sea?BOAT:BOAT_IN)[boatType]||(sea?BOAT:BOAT_IN).small,why=[];let lv=0;const up=(l,txt,info)=>{lv=Math.max(lv,l);why.push({l,txt,info});};
   const ws=W.ws||0,wg=W.wg||0;
   if(ws>=P.windStop||wg>=P.gustStop)up(2,`Wind ${Math.round(ws)} km/h (${BFT(ws)} Bft), Böen ${Math.round(wg)} km/h – zu viel für diese Bootsgröße`);
   else if(ws>P.windOk||wg>=P.gustStop*0.8)up(1,`Wind ${Math.round(ws)} km/h (${BFT(ws)} Bft), Böen ${Math.round(wg)} km/h – frisch, nur in Landnähe`);
   if(W.wave){const w=W.wave,steep=w.p!=null&&w.p<5&&w.h>=0.4;
     let l=w.h>=P.waveStop?2:w.h>P.waveOk?1:0;if(steep&&l<2&&w.h>P.waveOk*0.7)l++;
     up(l,`Wellen ${r1(w.h)} m${w.p!=null?`, Periode ${Math.round(w.p)} s`:''}${steep?' – kurz und steil':''}. Einzelne Wellen können fast doppelt so hoch sein.`,l===0);}
-  else if(!isSea()&&ws>P.windOk*0.8)up(0,'Auf großen Seen baut sich bei diesem Wind schnell kurze, steile Welle auf.',true);
+  if(W.wave&&W.wave.cur!=null){const kn=W.wave.cur/1.852;
+    if(W.wave.cur>=5.5)up(2,`Starke Strömung ${r1(kn)} kn${W.wave.curd!=null?' Richtung '+DIR(W.wave.curd):''} – kleine Boote kommen kaum dagegen an`);
+    else if(W.wave.cur>=3.5)up(1,`Spürbare Strömung ${r1(kn)} kn${W.wave.curd!=null?' Richtung '+DIR(W.wave.curd):''} – Rückweg einplanen, Motor muss sicher laufen`);}
+  if(!sea&&ws>P.windOk*0.8)up(0,'Auf großen Seen baut sich bei diesem Wind schnell kurze, steile Welle auf.',true);
   if(W.wc!=null&&[95,96,99].includes(W.wc))up(2,'Gewitter vorhergesagt – nicht aufs Wasser');
-  if(W.vis!=null){if(W.vis<1000)up(2,`Nebel, Sicht ${Math.round(W.vis)} m`);else if(W.vis<3000)up(1,`Eingeschränkte Sicht (${(W.vis/1000).toFixed(1).replace('.',',')} km)`);}
+  if(W.vis!=null){if(W.vis<1000)up(sea?2:1,`Nebel, Sicht ${Math.round(W.vis)} m${sea?'':' – Schifffahrt beachten, langsam fahren'}`);else if(W.vis<3000)up(1,`Eingeschränkte Sicht (${(W.vis/1000).toFixed(1).replace('.',',')} km)`);}
   if(W.pr>4)up(1,'Starkregen');
-  if(sunAlt(new Date(t),state.lat,state.lng)<-3)up(boatType==='small'?1:0,'Dunkelheit: Positionslichter und Ortskenntnis nötig',boatType!=='small');
+  if(sunAlt(new Date(t),state.lat,state.lng)<-3){up(sea&&boatType==='small'?1:0,sea?'Dunkelheit: Positionslichter sind Pflicht, Ortskenntnis nötig':'Dunkelheit: Positionslichter sind Pflicht',!(sea&&boatType==='small'));why[why.length-1].kind=BOATDARK;}
+  if(ws<P.windOk*0.6&&wg<P.gustStop*0.6&&!(W.wave&&W.wave.h>P.waveOk)&&!(W.pr>0.5))why.unshift({l:0,txt:`Wetter ruhig: Wind ${Math.round(ws)} km/h, Böen ${Math.round(wg)} km/h${W.pr>0?'':', kein Regen'}`,info:true});
+  if(W.rh!=null&&W.rh>=95&&ws<8&&(W.vis==null||W.vis>=3000))up(0,'Sehr feuchte Luft bei Windstille: Nebel kann sich schnell bilden',true);
   if(W.t72!=null&&W.t72<12)up(0,`Wasser ${r1(W.t72)} °C: Kälteschock-Gefahr bei einem Sturz, Rettungsweste tragen`,true);
   return {lv,why};
 }
@@ -1145,7 +1152,8 @@ function renderBoat(shown,t){
   const card=$('boatCard'),bt=$('boatType');
   card.hidden=false;bt.value=boatType;
   if(!shown.W){$('boatStatus').className='bstatus';$('boatStatus').innerHTML='<span class="dot"></span>Keine Wetterdaten für diesen Zeitpunkt';$('boatWhy').innerHTML='<li class="info">Sobald Wetterdaten geladen sind, erscheint hier die Einschätzung.</li>';$('boatHours').innerHTML='';return;}
-  const a=boatAssess(shown.W,t),txt=['Ausfahrt vertretbar','Nur mit Erfahrung, in Landnähe, Wetter beobachten','Nicht rausfahren'][a.lv];
+  const a=boatAssess(shown.W,t),onlyDark=a.lv===1&&a.why.filter(w=>w.l===1).every(w=>w.kind===BOATDARK);
+  const sea=isSea(),txt=onlyDark?'Wetter ruhig – nur wegen Dunkelheit Vorsicht':(sea?['Ausfahrt vertretbar','Nur mit Erfahrung, in Landnähe, Wetter beobachten','Nicht rausfahren']:['Keine Bedenken','Vorsicht: Wind bzw. Sicht beachten','Nicht rausfahren'])[a.lv];
   $('boatStatus').className='bstatus l'+a.lv;$('boatStatus').innerHTML=`<span class="dot"></span>${txt}`;
   $('boatWhy').innerHTML=a.why.some(w=>!w.info)||a.why.length?a.why.map(w=>`<li class="${w.info?'info':''}">${esc(w.txt)}</li>`).join(''):'<li class="info">Wind, Wellen, Sicht und Gewitterlage unauffällig.</li>';
   let cells='';const {ds}=A;
