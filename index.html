@@ -1409,21 +1409,36 @@ async function waterAt(lat,lng){
     return {name:String(tg['name:de']||tg.name).slice(0,60),kind};
   }catch(_){return null;}
 }
+async function overpassQuery(q){
+  // Hauptserver ist oft ausgelastet: zweiten Server als Ersatz
+  for(const url of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']){
+    try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),12000);
+      const r=await fetch(url,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal});
+      clearTimeout(tm);if(r.ok)return await r.json();}catch(_){}
+  }
+  return null;
+}
+async function seaByElevation(lat,lng){
+  // Ersatzprüfung: liegen Punkte rund um den Ort auf Meereshöhe (0 m)? Dann ist dort Meer.
+  const pts=[[0,0]];for(let k=0;k<8;k++){const a=k*Math.PI/4;pts.push([Math.cos(a)*0.04,Math.sin(a)*0.04/Math.cos(lat*rad)]);}
+  try{const la=pts.map(p=>(lat+p[0]).toFixed(3)).join(','),lo=pts.map(p=>(lng+p[1]).toFixed(3)).join(',');
+    const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+la+'&longitude='+lo);if(!r.ok)return {sea:null,elev:null};
+    const el=(await r.json()).elevation;return {sea:el.filter(v=>v!=null&&v<=0.5).length>=2,elev:el[0]};}catch(_){return {sea:null,elev:null};}
+}
 async function detectWater(lat,lng){
-  // 1) Küste in der Nähe? (OpenStreetMap über Overpass)  2) sonst Höhe aus Open-Meteo
+  // 1) Küstenlinie im Umkreis von 5 km (OpenStreetMap über Overpass)  2) sonst Meereshöhe ringsum  3) sonst Höhe des Ortes
   let coast=null;
-  try{
-    const q=`[out:json][timeout:8];way["natural"="coastline"](around:3000,${G2(lat)},${G2(lng)});out ids 1;`;
-    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
-    if(r.ok){const j=await r.json();coast=j.elements&&j.elements.length>0;}
-  }catch(_){}
+  const j=await overpassQuery(`[out:json][timeout:10];way["natural"="coastline"](around:5000,${G2(lat)},${G2(lng)});out ids 1;`);
+  if(j)coast=!!(j.elements&&j.elements.length);
+  const ev=await seaByElevation(+lat,+lng);
+  if(coast===null&&ev.sea)coast=true;
   if(coast)return seaFor(+lat,+lng);
-  let elev=wx&&wx.key===(+lat).toFixed(3)+','+(+lng).toFixed(3)?wx.elev:null;
-  if(elev==null){try{const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+G2(lat)+'&longitude='+G2(lng));if(r.ok)elev=(await r.json()).elevation[0];}catch(_){}}
+  const elev=ev.elev;
   if(coast===null&&elev==null)return null;
   return elev!=null&&elev>=450?'bergland':'binnen';
 }
 async function setPlace(name,lat,lng,knownWater){
+  if(Math.hypot((lat-state.lat)*111,(lng-state.lng)*111*Math.cos(lat*rad))>30&&state.waterMode!=='auto'){state.waterMode='auto';}
   // alte Region/Länderregeln sofort verwerfen, bis die neue erkannt ist
   state.region=null;state.country=null;state.countryName='';
   state.waterName=knownWater?knownWater.name:null;state.waterKind=knownWater?knownWater.kind:'';
