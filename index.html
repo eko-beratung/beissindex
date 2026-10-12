@@ -429,7 +429,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-12 (Boots-Ampel)</p>
+      <p class="note">Version 2026-10-13 (Arten nach Ort)</p>
     </div>
   </section>
 </main>
@@ -534,8 +534,8 @@ function moonIllum(t){
 const KEY='beissindex:live:v1';
 const state={lat:52.5357,lng:13.1997,place:'Berlin Spandau',species:'zander',waterMode:'auto',waterAuto:'binnen',region:'Berlin',date:todayStr()};
 let wx=null;
-try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species','waterMode','waterAuto','region','waterName','waterKind'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,region:state.region,waterName:state.waterName,waterKind:state.waterKind,wx}));}catch(_){}}
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species','waterMode','waterAuto','region','country','countryName','waterName','waterKind'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,region:state.region,country:state.country,countryName:state.countryName,waterName:state.waterName,waterKind:state.waterKind,wx}));}catch(_){}}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dayBounds(str){const [y,m,d]=str.split('-').map(Number);return [new Date(y,m-1,d).getTime(),new Date(y,m-1,d+1).getTime()];}
 const dstr=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -596,8 +596,8 @@ Object.assign(SPECIES,{
     info:'Eingeschleppte Grundel, fast überall an Steinschüttungen. Brauchbarer Köderfisch.'},
   sprotte:{name:'Sprotte',t:[5,8,16,19],act:{dusk:1,day:.8,night:.2},sky:{over:0,sun:0},moon:0,water:true,
     info:'Kleiner Schwarmfisch, als Köderfisch genutzt.'},
-  dorsch:{name:'Dorsch',t:[2,5,10,14],act:{dusk:1,day:.7,night:.5},sky:{over:0,sun:0},moon:0,water:true,banned:true,
-    info:'Freizeitfischerei auf Dorsch ist in der Ostsee 2026 ganzjährig verboten, auch in den Förden (Quelle: Land Schleswig-Holstein, EU-Verordnung 2025/2454). Beifang sofort schonend zurücksetzen.'},
+  dorsch:{name:'Dorsch',t:[2,5,10,14],act:{dusk:1,day:.7,night:.5},sky:{over:0,sun:0},moon:0,water:true,
+    info:'Bodennaher Räuber kalter Meere. In der westlichen Ostsee ist die Freizeitfischerei 2026 ganzjährig verboten (EU-Verordnung 2025/2454), in Nordsee und Norwegen erlaubt, dort Mindestmaße und Fangmengen prüfen.'},
   bachforelle:{name:'Bachforelle',t:[4,8,15,18],act:{dusk:1,day:.6,night:.2},sky:{over:5,sun:-3},moon:3,
     info:'Kühle, sauerstoffreiche Bäche. Schonzeit meist im Winter, je nach Bundesland verschieden.'},
   regenbogenforelle:{name:'Regenbogenforelle',t:[4,10,18,21],act:{dusk:1,day:.7,night:.1},sky:{over:3,sun:0},moon:3,
@@ -637,6 +637,7 @@ const RULES={
 };
 const fmtMD=s=>s.slice(3)+'.'+s.slice(0,2)+'.';
 function ruleFor(key,t){
+  if(state.country&&state.country!=='de')return null;
   const R=RULES[state.region];if(!R)return null;const r=R.sp[key];if(!r)return {region:state.region,src:R.src,note:R.note,none:true};
   const d=new Date(t??Date.now()),md=String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   let closed=!!r.all;
@@ -653,7 +654,8 @@ function ruleText(rl){
   parts.push(rl.m?`Mindestmaß ${rl.m} cm`:'kein Mindestmaß');
   return `${rl.region}: ${parts.join(', ')}.`;
 }
-function blocked(t){if(SP().banned)return 'Fangverbot';const rl=ruleFor(state.species,t);return rl&&rl.closed?'Schonzeit':null;}
+const isBanned=k=>k==='dorsch'&&WTYPE()==='ostsee';
+function blocked(t){if(isBanned(state.species))return 'Fangverbot';const rl=ruleFor(state.species,t);return rl&&rl.closed?'Schonzeit':null;}
 Object.assign(SPECIES,{
   lufer:{name:'Blaubarsch (Lüfer)',t:[14,17,24,27],act:{dusk:1,day:.7,night:.3},sky:{over:3,sun:0},moon:3,season:[9,10,11,12],water:true,
     info:'Schwarmräuber, zieht im Herbst vom Schwarzen Meer durch Bosporus und Marmarameer. Jagt in der Dämmerung oft an der Oberfläche.'},
@@ -675,6 +677,53 @@ Object.assign(SPECIES,{
     info:'Mittelmeer und Atlantikküste, über Felsen und Seegras. Beißt gern auf Muschel und Krebs.'}
 });
 SPECIES.wolfsbarsch.info='Küstenräuber in Brandung, Felsen und Flussmündungen (türkisch Levrek). Mindestmaße und Fangmengen je Land prüfen.';
+Object.assign(SPECIES,{
+  seelachs:{name:'Seelachs (Köhler)',t:[5,8,14,17],act:{dusk:1,day:.8,night:.3},sky:{over:3,sun:0},moon:0,water:true,info:'Schwarmräuber in Norwegen und der nördlichen Nordsee, oft über Unterwasserbergen und vor Felsküsten.'},
+  pollack:{name:'Pollack',t:[7,10,15,18],act:{dusk:1,day:.6,night:.4},sky:{over:3,sun:-3},moon:0,water:true,info:'Standorttreuer Räuber an Kelpwäldern und Felsriffen. Beißt am besten in der Dämmerung.'},
+  leng:{name:'Leng',t:[5,7,12,15],act:{dusk:.8,day:.8,night:.8},sky:{over:0,sun:0},moon:0,water:true,info:'Tiefseefisch über Wracks und Felsen, meist ab 80 m Tiefe. Tageszeit spielt in der Tiefe kaum eine Rolle.'},
+  heilbutt:{name:'Heilbutt',t:[4,6,11,14],act:{dusk:1,day:.7,night:.5},sky:{over:0,sun:0},moon:0,water:true,info:'Größter Plattfisch, in Norwegen in Fjorden und an Sandkanten. Regionale Mindest- und Höchstmaße beachten.'},
+  saibling:{name:'Saibling',t:[3,6,12,15],act:{dusk:1,day:.6,night:.2},sky:{over:3,sun:-3},moon:0,info:'Kaltwasserfisch klarer, tiefer Seen in Skandinavien und den Alpen.'},
+  lachs:{name:'Lachs',t:[4,8,15,19],act:{dusk:1,day:.6,night:.4},sky:{over:5,sun:-3},moon:3,info:'Wanderfisch, in Lachsflüssen Norwegens im Sommer. Angeln meist nur mit spezieller Lizenz für den jeweiligen Fluss.'}
+});
+/* ---------- Welche Arten kommen hier vor? Nachweise aus GBIF (Global Biodiversity Information Facility) ---------- */
+const SCI={wels:'Silurus glanis',zander:'Sander lucioperca',hecht:'Esox lucius',aal:'Anguilla anguilla',karpfen:'Cyprinus carpio',rapfen:'Leuciscus aspius',schleie:'Tinca tinca',
+  barsch:'Perca fluviatilis',rotauge:'Rutilus rutilus',gruendling:'Gobio gobio',ukelei:'Alburnus alburnus',rotfeder:'Scardinius erythrophthalmus',brasse:'Abramis brama',
+  bachforelle:'Salmo trutta',regenbogenforelle:'Oncorhynchus mykiss',aesche:'Thymallus thymallus',doebel:'Squalius cephalus',barbe:'Barbus barbus',saibling:'Salvelinus alpinus',lachs:'Salmo salar',
+  meerforelle:'Salmo trutta',hornhecht:'Belone belone',plattfisch:'Platichthys flesus',makrele:'Scomber scombrus',wolfsbarsch:'Dicentrarchus labrax',hering:'Clupea harengus',
+  sandaal:'Ammodytes tobianus',grundel:'Neogobius melanostomus',sprotte:'Sprattus sprattus',dorsch:'Gadus morhua',lufer:'Pomatomus saltatrix',istavrit:'Trachurus trachurus',
+  hamsi:'Engraulis encrasicolus',kefal:'Mugil cephalus',kalkan:'Scophthalmus maximus',mezgit:'Merlangius merlangus',barbun:'Mullus barbatus',palamut:'Sarda sarda',dorade:'Sparus aurata',
+  seelachs:'Pollachius virens',pollack:'Pollachius pollachius',leng:'Molva molva',heilbutt:'Hippoglossus hippoglossus'};
+const FRESH=['wels','zander','hecht','aal','karpfen','rapfen','schleie','bachforelle','regenbogenforelle','lachs','saibling','barbe','aesche','doebel','barsch','rotauge','gruendling','ukelei','rotfeder','brasse'];
+const MARINE=['dorsch','seelachs','pollack','leng','heilbutt','meerforelle','wolfsbarsch','lufer','palamut','dorade','makrele','hornhecht','plattfisch','kalkan','mezgit','barbun','kefal','hering','sandaal','grundel','sprotte','istavrit','hamsi'];
+const BAIT=new Set(['barsch','rotauge','gruendling','ukelei','rotfeder','brasse','hering','sandaal','grundel','sprotte','istavrit','hamsi']);
+let gbif={};try{gbif=JSON.parse(localStorage.getItem('beissindex:gbif')||'{}');}catch(_){gbif={};}
+let gbifBusy=null;
+async function loadGBIF(lat,lng,sea){
+  const key=G2(lat)+','+G2(lng)+'|'+(sea?'m':'f');
+  if(gbif[key]&&Date.now()-gbif[key].t<60*dayMs)return gbif[key];
+  if(gbifBusy===key)return null;gbifBusy=key;
+  const pool=sea?MARINE:FRESH,names=[...new Set(pool.map(k=>SCI[k]))],counts={};
+  let ok=0;
+  const one=async n=>{try{const r=await fetch('https://api.gbif.org/v1/occurrence/search?limit=0&hasCoordinate=true&scientificName='+encodeURIComponent(n)+'&geoDistance='+G2(lat)+','+G2(lng)+',30km');
+    if(r.ok){counts[n]=(await r.json()).count||0;ok++;}}catch(_){}};
+  for(let i=0;i<names.length;i+=6)await Promise.all(names.slice(i,i+6).map(one));
+  gbifBusy=null;
+  if(ok<names.length/2)return null;
+  const res={t:Date.now(),counts};gbif[key]=res;
+  const ks=Object.keys(gbif);if(ks.length>30)delete gbif[ks[0]];
+  try{localStorage.setItem('beissindex:gbif',JSON.stringify(gbif));}catch(_){}
+  return res;
+}
+function speciesLists(){
+  const W=WATERS[WTYPE()],sea=isSea(),key=G2(state.lat)+','+G2(state.lng)+'|'+(sea?'m':'f'),g=gbif[key];
+  if(!g)return {big:W.big,bait:W.bait,banned:W.banned,src:'typisch'};
+  const pool=sea?MARINE:FRESH;
+  const found=pool.filter(k=>(g.counts[SCI[k]]||0)>=3).sort((a,b)=>(g.counts[SCI[b]]||0)-(g.counts[SCI[a]]||0));
+  if(found.length<3)return {big:W.big,bait:W.bait,banned:W.banned,src:'typisch'};
+  const big=found.filter(k=>!BAIT.has(k)),bait=found.filter(k=>BAIT.has(k));
+  const banned=found.filter(isBanned);
+  return {big:big.filter(k=>!isBanned(k)),bait,banned,src:'gbif',counts:g.counts};
+}
 const WATERS={
   binnen:{name:'Binnengewässer (See/Fluss)',big:['wels','zander','hecht','aal','karpfen','rapfen','schleie'],bait:['barsch','rotauge','gruendling','ukelei','rotfeder','brasse']},
   ostsee:{name:'Ostsee (Küste/Förde)',big:['meerforelle','hornhecht','plattfisch','makrele','hering'],bait:['hering','sandaal','grundel','sprotte'],banned:['dorsch']},
@@ -933,7 +982,7 @@ function render(){
   if(typeof updateMapPlace==='function')updateMapPlace();
   $('speciesInfo').textContent=SP().info;
   {const rl=ruleFor(state.species,Date.parse(state.date+'T12:00'));const el=$('speciesRule');
-   el.textContent=rl?ruleText(rl)+(rl.closed?' An diesem Tag ist Schonzeit, gezieltes Beangeln ist verboten.':''):(['ostsee','nordsee'].includes(WTYPE())?'':'Schonzeiten und Mindestmaße sind für diese Region nicht hinterlegt. Bitte die örtlichen Fischereibestimmungen prüfen.');
+   el.textContent=rl?ruleText(rl)+(rl.closed?' An diesem Tag ist Schonzeit, gezieltes Beangeln ist verboten.':''):(state.region==null?'Region wird ermittelt …':`Schonzeiten und Mindestmaße sind für ${state.country&&state.country!=='de'?(state.countryName||'dieses Land'):(state.region||'diese Region')} nicht hinterlegt. Bitte die örtlichen Fischereibestimmungen prüfen.`);
    el.className='rule'+(rl&&rl.closed?' closed':'');}
   const best=series.reduce((a,b)=>b.total>a.total?b:a,series[0]);
   A.best=best;
@@ -1336,7 +1385,9 @@ async function geocodeOM(q){
 const qEl=$('placeQuery'),hitsEl=$('hits'),msg=$('locMsg');
 async function detectRegion(lat,lng){
   try{const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&accept-language=de&lat='+G3(lat)+'&lon='+G3(lng),{cache:'no-store'});
-    if(!r.ok)return null;const j=await r.json();return (j.address&&(j.address.state||j.address.city))||null;}catch(_){return null;}
+    if(!r.ok)return null;const j=await r.json(),a=j.address||{};
+    const region=a.state||a.county||a.city||a.region||a.country||null;
+    return region?{region,cc:(a.country_code||'').toLowerCase(),country:a.country||''}:null;}catch(_){return null;}
 }
 async function waterAt(lat,lng){
   const la=G3(lat),lo=G3(lng);
@@ -1365,6 +1416,8 @@ async function detectWater(lat,lng){
   return elev!=null&&elev>=450?'bergland':'binnen';
 }
 async function setPlace(name,lat,lng,knownWater){
+  // alte Region/Länderregeln sofort verwerfen, bis die neue erkannt ist
+  state.region=null;state.country=null;state.countryName='';
   state.waterName=knownWater?knownWater.name:null;state.waterKind=knownWater?knownWater.kind:'';
   if(map)map._userMoved=false;
   if(!$('oSheet').hidden)closePlace();
@@ -1376,8 +1429,9 @@ async function setPlace(name,lat,lng,knownWater){
   const wt=await detectWater(state.lat,state.lng);
   if(wxKey()!==myKey)return; // inzwischen wurde ein anderer Ort gewählt
   if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
-  detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg;persist();render();}});
+  detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();speciesChips();fillSpeciesSelect();render();}});
   loadPegel(true).then(render);
+  loadGBIF(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(g&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});
   if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
     if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;}
   await loadWeather(true);render();
@@ -1431,7 +1485,6 @@ async function locateMe(){
     const [rv,wa]=await Promise.all([reverseName(lat,lng),waterAt(lat,lng)]);
     const local=(rv&&rv.name)||`${lat.toFixed(3)}, ${lng.toFixed(3)}`;
     const name='📍 '+(wa?wa.name+' · '+local.split(',')[0]:local);
-    if(rv&&rv.state)state.region=rv.state;
     await setPlace(name,lat,lng,wa||{name:null,kind:''});
     toast(`Standort übernommen: ${name.slice(3)}${acc?` (± ${acc} m)`:''}`);
   }catch(err){
@@ -1476,18 +1529,19 @@ $('spotList').addEventListener('click',e=>{
   setPlace(s.name,s.lat,s.lng);speciesChips();
 });
 function speciesChips(){
-  const el=$('species'),W=WATERS[WTYPE()];
+  const el=$('species'),W=speciesLists();
   const all=[...W.big,...W.bait,...(W.banned||[])];
-  if(!all.includes(state.species)){state.species=W.big[0];persist();}
-  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${SPECIES[k].banned?'⛔ ':''}${SPECIES[k].name}</button>`;
+  if(!all.includes(state.species)){state.species=W.big[0]||W.bait[0];persist();}
+  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${isBanned(k)?'⛔ ':''}${SPECIES[k].name}</button>`;
   const auto=state.waterMode==='auto';
   el.innerHTML=`<div class="wrow"><label class="label" for="waterSel">Gewässer</label><select id="waterSel">
       <option value="auto"${auto?' selected':''}>Automatisch: ${WATERS[state.waterAuto].name}</option>
       ${Object.entries(WATERS).map(([k,v])=>`<option value="${k}"${!auto&&state.waterMode===k?' selected':''}>${v.name}</option>`).join('')}</select></div>
     <p class="label grp">Zielfische (Raub- und Großfische)</p><div class="chiprow">${W.big.map(chip).join('')}</div>
     <p class="label grp">Köder- &amp; Kleinfische</p><div class="chiprow">${W.bait.filter(k=>!W.big.includes(k)).map(chip).join('')}</div>
-    ${W.banned?`<p class="label grp">Gesperrt</p><div class="chiprow">${W.banned.map(chip).join('')}</div>`:''}`;
-  $('waterSel').onchange=async e=>{state.waterMode=e.target.value;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();render();await loadWeather(true);render();};
+    ${W.banned&&W.banned.length?`<p class="label grp">Gesperrt</p><div class="chiprow">${W.banned.map(chip).join('')}</div>`:''}
+    <p class="sub" style="font-size:.78rem;margin:6px 2px 0">${W.src==='gbif'?'Arten nach Nachweisen im Umkreis von 30 km (GBIF), häufigste zuerst.':'Typische Arten für diesen Gewässertyp. Nachweise für den Ort werden geladen, sobald Netz da ist.'}</p>`;
+  $('waterSel').onchange=async e=>{state.waterMode=e.target.value;persist();loadGBIF(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();render();await loadWeather(true);render();};
   el.onclick=e=>{const b=e.target.closest('button');if(!b)return;state.species=b.dataset.v;persist();speciesChips();render();};
 }
 speciesChips();
@@ -1638,7 +1692,7 @@ function showPos(){
   el.className='posinfo'+(fPos.src==='Suchort'?' warn':'');
 }
 function fillSpeciesSelect(){
-  const sel=fEl('fSpecies'),cur=sel.value,W=WATERS[WTYPE()],used=new Set();
+  const sel=fEl('fSpecies'),cur=sel.value,W=speciesLists(),used=new Set();
   const opt=k=>{used.add(k);return `<option value="${k}">${SPECIES[k].name}</option>`;};
   let html=`<optgroup label="Zielfische">${W.big.map(opt).join('')}</optgroup><optgroup label="Köderfische">${W.bait.filter(k=>!used.has(k)).map(opt).join('')}</optgroup>`;
   const rest=Object.keys(SPECIES).filter(k=>!used.has(k)).sort((a,b)=>SPECIES[a].name.localeCompare(SPECIES[b].name,'de'));
@@ -1678,7 +1732,7 @@ fEl('fSave').onclick=async()=>{
   const spKey=fEl('fSpecies').value;
   if(fEl('fResult').value==='fang'&&SPECIES[spKey]&&!confirmBanned){
     const warn=[];
-    if(SPECIES[spKey].banned)warn.push('Für '+SPECIES[spKey].name+' gilt derzeit ein Fangverbot');
+    if(isBanned(spKey))warn.push('Für '+SPECIES[spKey].name+' gilt derzeit ein Fangverbot');
     const rl=ruleFor(spKey,t);const len=parseFloat(String(fEl('fLength').value).replace(',','.'));
     if(rl&&rl.closed)warn.push(SPECIES[spKey].name+' hat am Fangtag Schonzeit ('+rl.region+')');
     if(rl&&rl.m&&isFinite(len)&&len<rl.m)warn.push('Mit '+len+' cm liegt der Fisch unter dem Mindestmaß von '+rl.m+' cm ('+rl.region+')');
@@ -2166,11 +2220,12 @@ loadWeather(false).then(render);
 loadCommunity();
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
+loadGBIF(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
   if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
   try{localStorage.setItem('beissindex:waterKey',k);}catch(_){}
   if(wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();fillSpeciesSelect();render();if(isSea())loadWeather(true).then(render);}
-  const rg=await detectRegion(state.lat,state.lng);if(rg){state.region=rg;persist();render();}})();
+  const rg=await detectRegion(state.lat,state.lng);if(rg){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();render();}})();
 setInterval(async()=>{if(!datePicked&&state.date!==todayStr()){goNow();return;}if(state.date===todayStr()){await loadWeather(false);render();}},5*60*1000);
 </script>
 </body>
