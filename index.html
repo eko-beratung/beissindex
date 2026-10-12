@@ -429,7 +429,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-13 (Arten nach Ort)</p>
+      <p class="note">Version 2026-10-13b (alle Arten automatisch)</p>
     </div>
   </section>
 </main>
@@ -714,15 +714,68 @@ async function loadGBIF(lat,lng,sea){
   try{localStorage.setItem('beissindex:gbif',JSON.stringify(gbif));}catch(_){}
   return res;
 }
+/* Weitere Arten: alle Knochenfische mit Nachweisen im Umkreis, Name (deutsch, sonst englisch/wissenschaftlich) aus GBIF.
+   Für Arten ohne eigenes Profil rechnet die App mit einem allgemeinen Profil und sagt das dazu. */
+const SCI_REV={};for(const [k,v] of Object.entries(SCI))if(!SCI_REV[v])SCI_REV[v]=k;
+// Kleine, bewusst gepflegte Sicherheitsliste: giftige oder gefährliche Arten
+const DANGER=[
+  {test:s=>s.family==='Tetraodontidae',txt:'GIFTIG: Kugelfisch. Fleisch und Innereien enthalten Tetrodotoxin, das auch beim Kochen nicht zerstört wird – auf keinen Fall essen. Scharfe Zähne, nur mit Zange lösen.'},
+  {test:s=>/^Pterois /.test(s.sci),txt:'Giftige Flossenstacheln (Rotfeuerfisch). Nur mit festen Handschuhen anfassen.'},
+  {test:s=>s.family==='Trachinidae',txt:'Petermännchen: giftige Stacheln an Rücken und Kiemendeckel, sehr schmerzhafte Stiche. Nicht mit bloßer Hand greifen.'},
+  {test:s=>s.family==='Scorpaenidae'||s.family==='Synanceiidae',txt:'Giftige Stacheln (Drachenkopf). Vorsichtig anfassen.'},
+  {test:s=>s.family==='Plotosidae',txt:'Giftige Stacheln (Korallenwels). Vorsichtig anfassen.'}
+];
+let gbifSp={};try{gbifSp=JSON.parse(localStorage.getItem('beissindex:gbifsp')||'{}');}catch(_){gbifSp={};}
+let gbifAll={};try{gbifAll=JSON.parse(localStorage.getItem('beissindex:gbifall')||'{}');}catch(_){gbifAll={};}
+let gbifClass=null;try{gbifClass=+localStorage.getItem('beissindex:gbifclass')||null;}catch(_){}
+function registerDynamic(){
+  for(const [k,s] of Object.entries(gbifSp)){
+    if(!s||!s.sci||SCI_REV[s.sci])continue;
+    const id='g'+k;if(SPECIES[id])continue;
+    const sea=!!s.sea;const danger=DANGER.find(d=>d.test(s));
+    SPECIES[id]={name:s.de||s.en||s.sci,t:sea?[8,12,23,27]:[4,10,22,27],act:{dusk:1,day:.7,night:.5},sky:{over:0,sun:0},moon:3,water:sea,generic:true,sci:s.sci,danger:danger?danger.txt:null,
+      info:(danger?'⚠ '+danger.txt+' ':'')+`${s.sci}${s.family?' ('+s.family+')':''}. Für diese Art hat die App kein eigenes Profil, der Index nutzt ein allgemeines Profil und ist nur grob.`};
+  }
+}
+registerDynamic();
+async function loadGBIFAll(lat,lng,sea){
+  const key=G2(lat)+','+G2(lng);
+  if(gbifAll[key]&&Date.now()-gbifAll[key].t<60*dayMs)return gbifAll[key];
+  try{
+    if(!gbifClass){const r=await fetch('https://api.gbif.org/v1/species/match?rank=CLASS&strict=true&name=Actinopterygii');if(r.ok){gbifClass=(await r.json()).usageKey||null;try{localStorage.setItem('beissindex:gbifclass',String(gbifClass));}catch(_){}}}
+    if(!gbifClass)return null;
+    const r=await fetch(`https://api.gbif.org/v1/occurrence/search?limit=0&hasCoordinate=true&classKey=${gbifClass}&geoDistance=${G2(lat)},${G2(lng)},30km&facet=speciesKey&facetLimit=40&facetMincount=3`);
+    if(!r.ok)return null;const j=await r.json();
+    const list=((j.facets&&j.facets[0]&&j.facets[0].counts)||[]).map(c=>({k:c.name,c:c.count}));
+    // Namen nachladen (einmalig je Art, danach aus dem Speicher)
+    const need=list.filter(x=>!gbifSp[x.k]);
+    for(let i=0;i<need.length;i+=6)await Promise.all(need.slice(i,i+6).map(async x=>{
+      try{const [a,b]=await Promise.all([fetch('https://api.gbif.org/v1/species/'+x.k).then(r=>r.ok?r.json():null),fetch('https://api.gbif.org/v1/species/'+x.k+'/vernacularNames?limit=60').then(r=>r.ok?r.json():null)]);
+        if(!a)return;const vn=(b&&b.results)||[];const pick=l=>{const v=vn.find(n=>n.language===l);return v?v.vernacularName.replace(/^./,c=>c.toUpperCase()):null;};
+        gbifSp[x.k]={sci:a.canonicalName||a.scientificName,family:a.family||'',de:pick('deu'),en:pick('eng'),sea};}catch(_){}
+    }));
+    try{localStorage.setItem('beissindex:gbifsp',JSON.stringify(gbifSp));}catch(_){}
+    registerDynamic();
+    const res={t:Date.now(),list};gbifAll[key]=res;
+    const ks=Object.keys(gbifAll);if(ks.length>30)delete gbifAll[ks[0]];
+    try{localStorage.setItem('beissindex:gbifall',JSON.stringify(gbifAll));}catch(_){}
+    return res;
+  }catch(_){return null;}
+}
+function extraSpecies(){
+  const g=gbifAll[G2(state.lat)+','+G2(state.lng)];if(!g)return [];
+  return g.list.map(x=>gbifSp[x.k]&&!SCI_REV[gbifSp[x.k].sci]?'g'+x.k:null).filter(k=>k&&SPECIES[k]).slice(0,25);
+}
 function speciesLists(){
   const W=WATERS[WTYPE()],sea=isSea(),key=G2(state.lat)+','+G2(state.lng)+'|'+(sea?'m':'f'),g=gbif[key];
-  if(!g)return {big:W.big,bait:W.bait,banned:W.banned,src:'typisch'};
+  const extra=extraSpecies();
+  if(!g)return {big:W.big,bait:W.bait,banned:W.banned,extra,src:'typisch'};
   const pool=sea?MARINE:FRESH;
   const found=pool.filter(k=>(g.counts[SCI[k]]||0)>=3).sort((a,b)=>(g.counts[SCI[b]]||0)-(g.counts[SCI[a]]||0));
-  if(found.length<3)return {big:W.big,bait:W.bait,banned:W.banned,src:'typisch'};
+  if(found.length<3)return {big:W.big,bait:W.bait,banned:W.banned,extra,src:'typisch'};
   const big=found.filter(k=>!BAIT.has(k)),bait=found.filter(k=>BAIT.has(k));
   const banned=found.filter(isBanned);
-  return {big:big.filter(k=>!isBanned(k)),bait,banned,src:'gbif',counts:g.counts};
+  return {big:big.filter(k=>!isBanned(k)),bait,banned,extra,src:'gbif',counts:g.counts};
 }
 const WATERS={
   binnen:{name:'Binnengewässer (See/Fluss)',big:['wels','zander','hecht','aal','karpfen','rapfen','schleie'],bait:['barsch','rotauge','gruendling','ukelei','rotfeder','brasse']},
@@ -1455,6 +1508,7 @@ async function setPlace(name,lat,lng,knownWater){
   detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();speciesChips();fillSpeciesSelect();render();}});
   loadPegel(true).then(render);
   loadGBIF(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(g&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});
+  loadGBIFAll(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(g&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});
   if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
     if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;}
   await loadWeather(true);render();
@@ -1553,15 +1607,16 @@ $('spotList').addEventListener('click',e=>{
 });
 function speciesChips(){
   const el=$('species'),W=speciesLists();
-  const all=[...W.big,...W.bait,...(W.banned||[])];
-  if(!all.includes(state.species)){state.species=W.big[0]||W.bait[0];persist();}
-  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${isBanned(k)?'⛔ ':''}${SPECIES[k].name}</button>`;
+  const all=[...W.big,...W.bait,...(W.banned||[]),...(W.extra||[])];
+  if(!all.includes(state.species)){state.species=W.big[0]||W.bait[0]||(W.extra||[])[0];persist();}
+  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${isBanned(k)?'⛔ ':''}${SPECIES[k].danger?'⚠ ':''}${SPECIES[k].name}</button>`;
   const auto=state.waterMode==='auto';
   el.innerHTML=`<div class="wrow"><label class="label" for="waterSel">Gewässer</label><select id="waterSel">
       <option value="auto"${auto?' selected':''}>Automatisch: ${WATERS[state.waterAuto].name}</option>
       ${Object.entries(WATERS).map(([k,v])=>`<option value="${k}"${!auto&&state.waterMode===k?' selected':''}>${v.name}</option>`).join('')}</select></div>
     <p class="label grp">Zielfische (Raub- und Großfische)</p><div class="chiprow">${W.big.map(chip).join('')}</div>
     <p class="label grp">Köder- &amp; Kleinfische</p><div class="chiprow">${W.bait.filter(k=>!W.big.includes(k)).map(chip).join('')}</div>
+    ${W.extra&&W.extra.length?`<p class="label grp">Weitere nachgewiesene Arten</p><div class="chiprow">${W.extra.map(chip).join('')}</div>`:''}
     ${W.banned&&W.banned.length?`<p class="label grp">Gesperrt</p><div class="chiprow">${W.banned.map(chip).join('')}</div>`:''}
     <p class="sub" style="font-size:.78rem;margin:6px 2px 0">${W.src==='gbif'?'Arten nach Nachweisen im Umkreis von 30 km (GBIF), häufigste zuerst.':'Typische Arten für diesen Gewässertyp. Nachweise für den Ort werden geladen, sobald Netz da ist.'}</p>`;
   $('waterSel').onchange=async e=>{state.waterMode=e.target.value;persist();loadGBIF(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();render();await loadWeather(true);render();};
@@ -1717,7 +1772,7 @@ function showPos(){
 function fillSpeciesSelect(){
   const sel=fEl('fSpecies'),cur=sel.value,W=speciesLists(),used=new Set();
   const opt=k=>{used.add(k);return `<option value="${k}">${SPECIES[k].name}</option>`;};
-  let html=`<optgroup label="Zielfische">${W.big.map(opt).join('')}</optgroup><optgroup label="Köderfische">${W.bait.filter(k=>!used.has(k)).map(opt).join('')}</optgroup>`;
+  let html=`<optgroup label="Zielfische">${W.big.map(opt).join('')}</optgroup><optgroup label="Köderfische">${W.bait.filter(k=>!used.has(k)).map(opt).join('')}</optgroup>`+((W.extra||[]).length?`<optgroup label="Weitere hier nachgewiesen">${W.extra.filter(k=>!used.has(k)).map(opt).join('')}</optgroup>`:'');
   const rest=Object.keys(SPECIES).filter(k=>!used.has(k)).sort((a,b)=>SPECIES[a].name.localeCompare(SPECIES[b].name,'de'));
   html+=`<optgroup label="Andere Gewässer">${rest.map(k=>`<option value="${k}">${SPECIES[k].name}</option>`).join('')}</optgroup><option value="andere">Andere …</option>`;
   sel.innerHTML=html;sel.value=cur&&[...sel.options].some(o=>o.value===cur)?cur:state.species;
@@ -1755,11 +1810,12 @@ fEl('fSave').onclick=async()=>{
   const spKey=fEl('fSpecies').value;
   if(fEl('fResult').value==='fang'&&SPECIES[spKey]&&!confirmBanned){
     const warn=[];
+    if(SPECIES[spKey].danger)warn.push(SPECIES[spKey].danger.replace(/\.$/,''));
     if(isBanned(spKey))warn.push('Für '+SPECIES[spKey].name+' gilt derzeit ein Fangverbot');
     const rl=ruleFor(spKey,t);const len=parseFloat(String(fEl('fLength').value).replace(',','.'));
     if(rl&&rl.closed)warn.push(SPECIES[spKey].name+' hat am Fangtag Schonzeit ('+rl.region+')');
     if(rl&&rl.m&&isFinite(len)&&len<rl.m)warn.push('Mit '+len+' cm liegt der Fisch unter dem Mindestmaß von '+rl.m+' cm ('+rl.region+')');
-    if(warn.length){confirmBanned=true;m.textContent='Hinweis: '+warn.join('. ')+'. Der Fisch muss sofort schonend zurückgesetzt werden. Zum Speichern als dokumentierter Fang erneut auf Speichern tippen.';return;}
+    if(warn.length){confirmBanned=true;const legal=warn.length>(SPECIES[spKey].danger?1:0);m.textContent='Hinweis: '+warn.join('. ')+'.'+(legal?' Der Fisch muss sofort schonend zurückgesetzt werden.':'')+' Zum Speichern erneut auf Speichern tippen.';return;}
   }
   confirmBanned=false;
   const spName=spKey==='andere'?(fEl('fOther').value.trim()||'Andere'):SPECIES[spKey].name;
@@ -2244,6 +2300,7 @@ loadCommunity();
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
 loadGBIF(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});
+loadGBIFAll(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}});
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
   if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
   try{localStorage.setItem('beissindex:waterKey',k);}catch(_){}
