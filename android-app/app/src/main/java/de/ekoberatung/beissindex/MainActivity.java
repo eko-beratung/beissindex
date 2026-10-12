@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.rgb(18,52,59));
+        root.setBackgroundColor(Color.rgb(7,13,24));
         browser = new WebView(this);
         root.addView(browser,new FrameLayout.LayoutParams(-1,-1));
         setContentView(root);
