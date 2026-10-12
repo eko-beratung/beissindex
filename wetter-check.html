@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wetter zu Fängen – Havel Spandau</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#070d18;color:#eef3fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 40px}
+h1{font-size:1.3rem;margin:0 0 6px}p{color:#9fb0c8;font-size:.92rem;margin:6px 0}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:10px 16px;background:#2f6bff;color:#fff;cursor:pointer;margin:8px 8px 8px 0}
+.wrap{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;font-size:.85rem;min-width:760px}
+th,td{padding:6px 8px;border-bottom:1px solid #22304a;text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{color:#9fb0c8;font-weight:600}
+#status{font-weight:700}
+.sum{background:#121c2e;border:1px solid #22304a;border-radius:14px;padding:10px 14px;margin-top:12px;font-size:.92rem}
+</style>
+</head>
+<body>
+<h1>Wetter zu den Havel-Fängen</h1>
+<p>Holt für jeden Fang Temperatur, Luftdruck, Drucktendenz (3 Std.), Bewölkung, Wind und Regen aus dem Open-Meteo-Archiv (Havel, Berlin-Spandau). Nur Art, Zeit, Größe und Köder, keine Namen.</p>
+<button id="go">Wetter abrufen</button><button id="csv" hidden>Als CSV speichern</button>
+<div id="status"></div>
+<div class="wrap"><table id="t"></table></div>
+<div class="sum" id="sum" hidden></div>
+<script>
+const LAT=52.53,LNG=13.20;
+const F=[
+['Hecht','2026-05-25T14:38',102,'Gummifisch'],['Zander','2026-06-02T18:30',78,'Jerkbait'],['Zander','2026-06-01T23:10',81,'Wobbler'],
+['Hecht','2026-05-17T12:42',57,'Blinker'],['Hecht','2026-05-14T12:45',65,'Crankbait'],['Zander','2026-05-16T22:10',71,'Gummifisch'],
+['Hecht','2026-05-06T10:40',57,'Jig Spinner'],['Hecht','2026-05-03T16:52',72,'Chatterbait'],['Hecht','2026-05-03T15:32',81,'Wobbler'],
+['Hecht','2026-05-03T18:45',67,'Blinker'],['Hecht','2026-05-13T13:00',55,'Gummifisch'],['Zander','2026-05-01T16:40',80,'Gummifisch'],
+['Hecht','2026-05-01T19:29',77,'Blinker'],['Zander','2025-11-12T22:37',56,'Gummifisch'],['Hecht','2026-05-01T12:07',86,'Spinner'],
+['Zander','2025-11-07T06:13',81,'Gummifisch'],['Hecht','2025-11-07T10:17',90,'Gummifisch'],['Zander','2025-10-19T12:54',62,'Gummifisch'],
+['Zander','2025-10-20T22:45',81,'Wobbler']];
+const fmt=v=>v==null?'–':String(Math.round(v*10)/10).replace('.',',');
+const trendTxt=d=>d==null?'–':d>=2?'stark steigend':d>=0.7?'leicht steigend':d>-0.7?'stabil':d>-2?'leicht fallend':'stark fallend';
+let rows=[];
+async function get(url){const r=await fetch(url);if(!r.ok)throw new Error('Fehler '+r.status);return r.json();}
+document.getElementById('go').onclick=async()=>{
+  const st=document.getElementById('status');st.textContent='Lade …';
+  try{
+    const vars='temperature_2m,pressure_msl,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,relative_humidity_2m';
+    const base=`latitude=${LAT}&longitude=${LNG}&hourly=${vars}&timezone=Europe%2FBerlin&wind_speed_unit=kmh`;
+    // Archiv bis ca. 5 Tage zurück, dazu die Vorhersage-API mit 92 Tagen Vergangenheit für jüngere Fänge
+    const [a,f]=await Promise.all([
+      get(`https://archive-api.open-meteo.com/v1/archive?${base}&start_date=2025-10-15&end_date=2026-06-05`),
+      get(`https://api.open-meteo.com/v1/forecast?${base}&past_days=92&forecast_days=1`).catch(()=>null)]);
+    const idx=new Map();const add=d=>{if(!d)return;d.hourly.time.forEach((t,i)=>{if(d.hourly.pressure_msl[i]!=null&&!idx.has(t))idx.set(t,{d,i});});};
+    add(a);add(f);
+    rows=F.map(([sp,iso,len,bait])=>{
+      const h=iso.slice(0,13)+':00',hm3=(()=>{const x=new Date(iso.slice(0,13)+':00');x.setHours(x.getHours()-3);const p=n=>String(n).padStart(2,'0');return `${x.getFullYear()}-${p(x.getMonth()+1)}-${p(x.getDate())}T${p(x.getHours())}:00`;})();
+      const e=idx.get(h),e3=idx.get(hm3),g=(k)=>e?e.d.hourly[k][e.i]:null;
+      const dp=e&&e3?e.d.hourly.pressure_msl[e.i]-e3.d.hourly.pressure_msl[e3.i]:null;
+      return {sp,iso,len,bait,tmp:g('temperature_2m'),p:g('pressure_msl'),dp,cc:g('cloud_cover'),ws:g('wind_speed_10m'),wg:g('wind_gusts_10m'),pr:g('precipitation'),rh:g('relative_humidity_2m')};
+    });
+    const t=document.getElementById('t');
+    t.innerHTML='<tr><th>Art</th><th>Fangzeit</th><th>cm</th><th>Luft °C</th><th>hPa</th><th>Tendenz 3h</th><th>Wolken %</th><th>Wind km/h</th><th>Böen</th><th>Regen mm</th><th>Feuchte %</th></tr>'+
+      rows.map(r=>`<tr><td>${r.sp}</td><td>${r.iso.replace('T',' ')}</td><td>${r.len}</td><td>${fmt(r.tmp)}</td><td>${fmt(r.p)}</td><td>${r.dp==null?'–':(r.dp>0?'+':'')+fmt(r.dp)+' ('+trendTxt(r.dp)+')'}</td><td>${fmt(r.cc)}</td><td>${fmt(r.ws)}</td><td>${fmt(r.wg)}</td><td>${fmt(r.pr)}</td><td>${fmt(r.rh)}</td></tr>`).join('');
+    const sum=document.getElementById('sum');sum.hidden=false;
+    sum.innerHTML=['Hecht','Zander'].map(s=>{const R=rows.filter(r=>r.sp===s&&r.p!=null);if(!R.length)return '';
+      const c={};R.forEach(r=>{const k=trendTxt(r.dp);c[k]=(c[k]||0)+1;});const av=k=>fmt(R.reduce((a,r)=>a+r[k],0)/R.length);
+      return `<b>${s}</b> (${R.length}): Ø ${av('tmp')} °C Luft, Ø ${av('p')} hPa, Ø ${av('cc')} % Wolken, Ø ${av('ws')} km/h Wind. Drucktendenz: ${Object.entries(c).map(([k,v])=>k+' '+v).join(', ')}.`;}).join('<br>');
+    document.getElementById('csv').hidden=false;st.textContent=`Fertig: ${rows.filter(r=>r.p!=null).length} von ${rows.length} Fängen mit Wetter.`;
+  }catch(e){st.textContent='Abruf fehlgeschlagen: '+e.message+'. Internetverbindung prüfen. Auf dem iPhone die Datei über GitHub öffnen, nicht aus der Dateien-App.';}
+};
+document.getElementById('csv').onclick=()=>{
+  const c=v=>v==null?'':String(Math.round(v*10)/10).replace('.',',');
+  const txt='\ufeffArt;Fangzeit;Länge cm;Köder;Luft °C;Luftdruck hPa;Tendenz 3h hPa;Tendenz;Wolken %;Wind km/h;Böen km/h;Regen mm;Feuchte %\n'+
+    rows.map(r=>[r.sp,r.iso.replace('T',' '),r.len,r.bait,c(r.tmp),c(r.p),c(r.dp),trendTxt(r.dp),c(r.cc),c(r.ws),c(r.wg),c(r.pr),c(r.rh)].join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'}));a.download='havel-faenge-wetter.csv';document.body.appendChild(a);a.click();a.remove();
+};
+</script>
+</body>
+</html>
