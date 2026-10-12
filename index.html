@@ -72,6 +72,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .wave{grid-column:1/-1;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(95,208,255,.10);border:1px solid rgba(95,208,255,.25);font-size:.9rem}
 .wave b{font-size:1rem}.wave.rough{background:rgba(255,107,90,.12);border-color:rgba(255,107,90,.4)}
 .fia{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(95,208,255,.08);border:1px solid rgba(95,208,255,.25);font-size:.9rem}
+.fiaaddr{margin-top:4px;padding-left:10px;border-left:2px solid var(--line)}
 .fia .fh{font-weight:800;margin-bottom:4px}.fia.verboten{background:rgba(255,107,90,.12);border-color:rgba(255,107,90,.45)}.fia.eigentuemer{background:rgba(255,181,71,.12);border-color:rgba(255,181,71,.4)}
 .fia hr{border:0;border-top:1px solid var(--line);margin:6px 0}.fia a{color:var(--accent2)}
 .winfo{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin:0 0 14px;font-size:.9rem}
@@ -448,7 +449,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-14b (Angelkarten Berlin amtlich)</p>
+      <p class="note">Version 2026-10-14c (Ausgabestelle sofort)</p>
     </div>
   </section>
 </main>
@@ -1200,6 +1201,7 @@ async function loadFIA(lat,lng){
       const r=await fetch(u,{cache:'no-store'});if(!r.ok)return [];const j=await r.json();
       return (j.features||[]).map(f=>({kind,props:f.properties||{}}));}catch(_){return null;}
   }));
+  await loadFIAPlaces();
   fiaBusy=null;
   if(res.every(x=>x===null)){return null;}           // Dienst nicht erreichbar
   const all=res.flat().filter(Boolean),order=['verboten','eigentuemer','karte','unbekannt'];
@@ -1209,10 +1211,24 @@ async function loadFIA(lat,lng){
   if(all.length&&!state.waterName){const p=all[0].props,k=Object.keys(p).find(k=>/gew(ae|ä)sser|^name$|bezeichnung/i.test(k)&&typeof p[k]==='string'&&p[k].trim());if(k){state.waterName=p[k].trim().slice(0,60);state.waterKind='';persist();}}
   return fia;
 }
-const FIA_SKIP=/^(id|gml_?id|objectid|fid|geom|the_geom|shape.*|flaeche.*|area|bbox|uuid|link_?)$/i;
+let fiaPlaces=null;
+async function loadFIAPlaces(){
+  if(fiaPlaces)return fiaPlaces;
+  try{const r=await fetch('https://gdi.berlin.de/services/wfs/angelgewaesser?service=WFS&version=2.0.0&request=GetFeature&typeNames=angelgewaesser:a_angel_ausgabestellen&outputFormat=application/json&srsName=EPSG:4326&count=300',{cache:'force-cache'});
+    if(r.ok){fiaPlaces=((await r.json()).features||[]).map(f=>f.properties||{});}}catch(_){}
+  return fiaPlaces;
+}
+const fiaClean=s=>String(s).replace(/^\s*\d+\s*[.)-]?\s*/,'').trim();
+function fiaMatchPlace(name){
+  if(!fiaPlaces||!name)return null;const nm=fiaClean(name).toLowerCase(),num=(String(name).match(/^\s*(\d+)/)||[])[1];
+  return fiaPlaces.find(p=>Object.values(p).some(v=>typeof v==='string'&&fiaClean(v).toLowerCase()===nm))||
+         (num?fiaPlaces.find(p=>Object.entries(p).some(([k,v])=>/nr|nummer|^id$|lfd/i.test(k)&&String(v).trim()===num)):null)||
+         fiaPlaces.find(p=>Object.values(p).some(v=>typeof v==='string'&&v.toLowerCase().includes(nm.slice(0,18))));
+}
+const FIA_SKIP=/^(id|nr|nummer|lfd.*|gml_?id|objectid|fid|geom|the_geom|shape.*|flaeche.*|area|bbox|uuid|link_?)$/i;
 function fiaProps(p){
   return Object.entries(p).filter(([k,v])=>v!=null&&String(v).trim()!==''&&typeof v!=='object'&&!FIA_SKIP.test(k)).slice(0,8)
-    .map(([k,v])=>{const lbl=k.replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());const s=String(v).trim();
+    .map(([k,v])=>{const lbl=k.replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());const s=/ausgabe|stelle|verein/i.test(k)?fiaClean(v):String(v).trim();
       const val=/^https?:\/\//.test(s)?`<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s)}</a>`:/^[\d\s()+\/-]{6,}$/.test(s)?`<a href="tel:${esc(s.replace(/[^\d+]/g,''))}">${esc(s)}</a>`:esc(s);
       return `<div><span class="sub">${esc(lbl)}:</span> ${val}</div>`;}).join('');
 }
@@ -1223,20 +1239,17 @@ function fiaHTML(){
   const h0=fia.hits[0];
   const head={verboten:'⛔ Angeln verboten (laut Fischereiamt Berlin)',eigentuemer:'🔒 Angeln nur den Eigentümern erlaubt',karte:'🎫 Angelkarte laut Fischereiamt Berlin',unbekannt:'❔ Ausgabestelle der Angelkarten ist dem Fischereiamt nicht bekannt'}[h0.kind];
   const more=fia.hits.filter(x=>x.kind===h0.kind).slice(0,2);
-  return `<div class="fia ${h0.kind}"><div class="fh">${head}</div>${more.map(x=>fiaProps(x.props)).join('<hr>')}<div class="sub" style="margin-top:6px">Quelle: Fischereiamt Berlin, Geoportal Berlin (Datenlizenz Deutschland – Zero 2.0). Abschnittsgrenzen beachten.</div></div>`;
+  const addr=x=>{const k=Object.keys(x.props).find(k=>/ausgabe|stelle/i.test(k));const pl=k?fiaMatchPlace(x.props[k]):null;if(!pl)return '';
+    const rows=Object.entries(pl).filter(([k,v])=>v!=null&&String(v).trim()&&typeof v!=='object'&&!FIA_SKIP.test(k)&&!/^name$|ausgabe/i.test(k)).slice(0,6);
+    return rows.length?`<div class="fiaaddr">${fiaProps(Object.fromEntries(rows))}</div>`:'';};
+  return `<div class="fia ${h0.kind}"><div class="fh">${head}</div>${more.map(x=>fiaProps(x.props)+addr(x)).join('<hr>')}<div class="sub" style="margin-top:6px">Quelle: Fischereiamt Berlin, Geoportal Berlin (Datenlizenz Deutschland – Zero 2.0). Abschnittsgrenzen beachten.</div></div>`;
 }
 function renderWaterInfo(){
   const el=$('waterInfo');if(!el)return;
   if(isSea()){el.hidden=true;return;}el.hidden=false;
-  const nm=state.waterName,note=waterNotes[wnKey()]||'';
-  const wn=nm||state.place.replace(/^📍\s*/,'').split('·')[0].trim();
-  const q=encodeURIComponent(`${wn} ${state.region||''} Angelkarte Gewässerbewirtschafter`);
+  const nm=state.waterName,f=fiaHTML(),berlin=inBerlinBox(state.lat,state.lng)&&(!state.region||state.region==='Berlin');
   el.innerHTML=`<div class="wn">💧 ${nm?esc(nm)+(state.waterKind?' <span class="sub">('+esc(state.waterKind)+')</span>':''):'<span class="sub">Kein Gewässer am gewählten Punkt erkannt</span>'}</div>`+
-    (wnEdit?`<div class="row"><input type="text" id="wnInput" maxlength="120" placeholder="z. B. LAVB, DAV Berlin, Havelkarte, Verein …" value="${esc(note)}"><button type="button" class="infobtn" id="wnSave">Speichern</button></div>`
-      :`<div>Bewirtschafter / Angelkarte: ${note?'<b>'+esc(note)+'</b>':'<span class="sub">nicht hinterlegt</span>'}</div>`)+
-    `<div class="row"><button type="button" class="infobtn" id="wnEditBtn">✎ ${note?'Ändern':'Eintragen'}</button><a class="infobtn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/search?q=${q}">🔎 Websuche</a></div>`+
-    `<div class="sub" style="margin-top:6px">Kanäle und Flüsse sind oft abschnittsweise verschiedenen Vereinen zugeordnet. Gefundenes oben als Notiz eintragen.</div>`+
-    fiaHTML()+(fia&&fia.hits&&fia.hits.length?'':(regionHint()?`<div class="sub" style="margin-top:6px">${esc(regionHint())}</div>`:''));
+    (f||(!berlin&&regionHint()?`<div class="sub" style="margin-top:6px">${esc(regionHint())}</div>`:''));
 }
 document.addEventListener('click',e=>{
   if(e.target.id==='wnEditBtn'){wnEdit=true;renderWaterInfo();const i=$('wnInput');if(i)i.focus();}
@@ -1590,6 +1603,7 @@ async function detectWater(lat,lng){
   return elev!=null&&elev>=450?'bergland':'binnen';
 }
 async function setPlace(name,lat,lng,knownWater){
+  fia=null;fiaKey=null;
   if(Math.hypot((lat-state.lat)*111,(lng-state.lng)*111*Math.cos(lat*rad))>30&&state.waterMode!=='auto'){state.waterMode='auto';}
   // alte Region/Länderregeln sofort verwerfen, bis die neue erkannt ist
   state.region=null;state.country=null;state.countryName='';
@@ -1600,12 +1614,13 @@ async function setPlace(name,lat,lng,knownWater){
   state.place=name;state.lat=+(+lat).toFixed(4);state.lng=+(+lng).toFixed(4);persist();
   hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();showManual();render();
   const myKey=wxKey();
-  if(!knownWater)waterAt(state.lat,state.lng).then(w=>{if(wxKey()!==myKey)return;state.waterName=w?w.name:null;state.waterKind=w?w.kind:'';persist();render();});
+  renderWaterInfo();
+  loadFIA(state.lat,state.lng).then(()=>{if(wxKey()===myKey)renderWaterInfo();});
+  if(!knownWater)waterAt(state.lat,state.lng).then(w=>{if(wxKey()!==myKey||!w)return;state.waterName=w.name;state.waterKind=w.kind;persist();render();});
   const wt=await detectWater(state.lat,state.lng);
   if(wxKey()!==myKey)return; // inzwischen wurde ein anderer Ort gewählt
   if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
   detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();speciesChips();fillSpeciesSelect();render();}});
-  loadFIA(state.lat,state.lng).then(()=>{if(wxKey()===myKey)renderWaterInfo();});
   loadPegel(true).then(render);
   loadGBIFAll(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(wxKey()!==myKey)return;if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g2=>{if(g2&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});});
   if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
