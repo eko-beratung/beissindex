@@ -853,10 +853,16 @@ async function fetchWx(lat,lng,past,fwd,sea){
     ws:h.wind_speed_10m,wg:h.wind_gusts_10m,pr:h.precipitation,tmp:h.temperature_2m,wc:h.weather_code||null,vis:h.visibility||null,sst:null};
   if(sea){
     try{
-      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_surface_temperature,wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
+      const m=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=sea_surface_temperature,wave_height,wave_period,wave_direction&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto');
       if(m.ok){const mj=(await m.json()).hourly;
         const al=key=>{const arr=mj[key];if(!arr)return null;const mp=new Map();mj.time.forEach((x,i)=>{if(arr[i]!=null)mp.set(x*1000,arr[i]);});return mp.size?out.t.map(x=>mp.has(x)?mp.get(x):null):null;};
-        out.sst=al('sea_surface_temperature');out.wh=al('wave_height');out.wp=al('wave_period');out.wd=al('wave_direction');out.cu=al('ocean_current_velocity');out.cd=al('ocean_current_direction');}
+        out.sst=al('sea_surface_temperature');out.wh=al('wave_height');out.wp=al('wave_period');out.wd=al('wave_direction');}
+    }catch(_){}
+    // Strömung getrennt abrufen: fällt sie aus, bleiben Wellen und Wassertemperatur erhalten
+    try{
+      const c=await fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+G2(lat)+'&longitude='+G2(lng)+'&hourly=ocean_current_velocity,ocean_current_direction&past_days='+Math.min(past,92)+'&forecast_days='+Math.min(fwd,8)+'&timeformat=unixtime&timezone=auto',{cache:'no-store'});
+      if(c.ok){const cj=(await c.json()).hourly;if(cj){const al2=key=>{const arr=cj[key];if(!arr)return null;const mp=new Map();cj.time.forEach((x,i)=>{if(arr[i]!=null)mp.set(x*1000,arr[i]);});return mp.size?out.t.map(x=>mp.has(x)?mp.get(x):null):null;};
+        out.cu=al2('ocean_current_velocity');out.cd=al2('ocean_current_direction');}}
     }catch(_){}
   }
   if(sea==='nordsee'){
