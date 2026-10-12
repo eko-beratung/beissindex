@@ -3,7 +3,7 @@ android {
     namespace 'de.ekoberatung.beissindex'
     compileSdk 35
     defaultConfig {
-        applicationId 'de.ekoberatung.beissindex'
+        applicationId 'de.ekoberatung.beissindex.ort'
         minSdk 26
         targetSdk 34
         versionCode 2
