@@ -19,7 +19,7 @@ th{color:#9fb0c8;font-weight:600}
 </style>
 </head>
 <body>
-<h1>Wetter zu den Havel-Fängen</h1>
+<h1>Wetter zu den Havel-Fängen (60)</h1>
 <p>Holt für jeden Fang Temperatur, Luftdruck, Drucktendenz (3 Std.), Bewölkung, Wind und Regen aus dem Open-Meteo-Archiv (Havel, Berlin-Spandau). Nur Art, Zeit, Größe und Köder, keine Namen.</p>
 <button id="go">Wetter abrufen</button><button id="csv" hidden>Als CSV speichern</button>
 <div id="status"></div>
@@ -27,14 +27,7 @@ th{color:#9fb0c8;font-weight:600}
 <div class="sum" id="sum" hidden></div>
 <script>
 const LAT=52.53,LNG=13.20;
-const F=[
-['Hecht','2026-05-25T14:38',102,'Gummifisch'],['Zander','2026-06-02T18:30',78,'Jerkbait'],['Zander','2026-06-01T23:10',81,'Wobbler'],
-['Hecht','2026-05-17T12:42',57,'Blinker'],['Hecht','2026-05-14T12:45',65,'Crankbait'],['Zander','2026-05-16T22:10',71,'Gummifisch'],
-['Hecht','2026-05-06T10:40',57,'Jig Spinner'],['Hecht','2026-05-03T16:52',72,'Chatterbait'],['Hecht','2026-05-03T15:32',81,'Wobbler'],
-['Hecht','2026-05-03T18:45',67,'Blinker'],['Hecht','2026-05-13T13:00',55,'Gummifisch'],['Zander','2026-05-01T16:40',80,'Gummifisch'],
-['Hecht','2026-05-01T19:29',77,'Blinker'],['Zander','2025-11-12T22:37',56,'Gummifisch'],['Hecht','2026-05-01T12:07',86,'Spinner'],
-['Zander','2025-11-07T06:13',81,'Gummifisch'],['Hecht','2025-11-07T10:17',90,'Gummifisch'],['Zander','2025-10-19T12:54',62,'Gummifisch'],
-['Zander','2025-10-20T22:45',81,'Wobbler']];
+const F=[["Hecht", "2024-06-16T20:39", 99, "Gummifisch"], ["Hecht", "2024-06-23T16:13", 80, "Jerkbait"], ["Hecht", "2024-07-19T16:30", 70, "Jerkbait"], ["Hecht", "2024-08-14T18:58", 98, "Jerkbait"], ["Zander", "2024-09-06T20:30", 79, "Gummifisch"], ["Zander", "2024-09-07T21:04", 65, "Gummifisch"], ["Hecht", "2024-09-13T08:03", 64, "Jerkbait"], ["Hecht", "2024-09-18T09:50", 70, "Jerkbait"], ["Zander", "2024-09-21T00:30", 63, "Gummifisch"], ["Hecht", "2024-09-22T17:11", 60, "Blinker / Spoons"], ["Hecht", "2024-10-11T09:24", 93, "Jerkbait"], ["Hecht", "2024-10-14T11:09", 70, "Jerkbait"], ["Zander", "2024-10-14T21:33", 85, "Köderfisch"], ["Zander", "2024-10-16T13:26", 64, "Köderfisch"], ["Zander", "2024-10-21T01:32", 63, "Gummifisch"], ["Hecht", "2024-10-27T02:30", 79, "Sonstiges Imitat (Frosch, Krebs etc.)"], ["Zander", "2024-12-20T23:27", 65, "Gummifisch"], ["Zander", "2024-12-21T18:27", 80, "Gummifisch"], ["Zander", "2024-12-25T11:43", 73, "Gummifisch"], ["Zander", "2024-12-26T10:05", 80, "Gummifisch"], ["Hecht", "2024-12-29T13:15", 70, "Köderfisch"], ["Hecht", "2024-12-30T12:05", 55, "Köderfisch"], ["Zander", "2025-03-01T16:02", 85, "Wurm"], ["Hecht", "2025-05-01T20:53", 64, "Chatterbait"], ["Hecht", "2025-05-03T07:30", 80, "Gummifisch"], ["Hecht", "2025-05-04T18:56", 73, "Gummifisch"], ["Hecht", "2025-05-09T22:38", 70, "Jig Spinner"], ["Hecht", "2025-05-28T14:17", 57, "Chatterbait"], ["Zander", "2025-06-01T01:15", 82, "Gummifisch"], ["Zander", "2025-06-07T01:20", 88, "Gummifisch"], ["Hecht", "2025-06-07T21:24", 63, "Gummifisch"], ["Zander", "2025-06-14T01:07", 82, "Gummifisch"], ["Hecht", "2025-07-04T20:35", 62, "Gummifisch"], ["Hecht", "2025-07-06T08:34", 77, "Jig Spinner"], ["Hecht", "2025-07-13T20:18", 73, "Gummifisch"], ["Hecht", "2025-08-04T07:27", 70, "Jig Spinner"], ["Hecht", "2025-08-04T09:08", 67, "Gummifisch"], ["Hecht", "2025-08-11T14:06", 85, "Spinner"], ["Hecht", "2025-08-11T17:38", 78, "Jerkbait"], ["Hecht", "2025-10-11T12:35", 82, "Gummifisch"], ["Zander", "2025-10-11T17:39", 50, "Gummifisch"], ["Zander", "2025-10-19T12:54", 62, "Gummifisch"], ["Zander", "2025-10-20T22:45", 81, "Wobbler"], ["Zander", "2025-11-07T06:13", 81, "Gummifisch"], ["Hecht", "2025-11-07T10:17", 90, "Gummifisch"], ["Zander", "2025-11-12T22:37", 56, "Gummifisch"], ["Hecht", "2026-05-01T12:07", 86, "Spinner"], ["Zander", "2026-05-01T16:40", 80, "Gummifisch"], ["Hecht", "2026-05-01T19:29", 77, "Blinker"], ["Hecht", "2026-05-03T15:32", 81, "Wobbler"], ["Hecht", "2026-05-03T16:52", 72, "Chatterbait"], ["Hecht", "2026-05-03T18:45", 67, "Blinker"], ["Hecht", "2026-05-06T10:40", 57, "Jig Spinner"], ["Hecht", "2026-05-13T13:00", 55, "Gummifisch"], ["Hecht", "2026-05-14T12:45", 65, "Crankbait"], ["Zander", "2026-05-16T22:10", 71, "Gummifisch"], ["Hecht", "2026-05-17T12:42", 57, "Blinker"], ["Hecht", "2026-05-25T14:38", 102, "Gummifisch"], ["Zander", "2026-06-01T23:10", 81, "Wobbler"], ["Zander", "2026-06-02T18:30", 78, "Jerkbait"]];
 const fmt=v=>v==null?'–':String(Math.round(v*10)/10).replace('.',',');
 const trendTxt=d=>d==null?'–':d>=2?'stark steigend':d>=0.7?'leicht steigend':d>-0.7?'stabil':d>-2?'leicht fallend':'stark fallend';
 let rows=[];
@@ -46,7 +39,7 @@ document.getElementById('go').onclick=async()=>{
     const base=`latitude=${LAT}&longitude=${LNG}&hourly=${vars}&timezone=Europe%2FBerlin&wind_speed_unit=kmh`;
     // Archiv bis ca. 5 Tage zurück, dazu die Vorhersage-API mit 92 Tagen Vergangenheit für jüngere Fänge
     const [a,f]=await Promise.all([
-      get(`https://archive-api.open-meteo.com/v1/archive?${base}&start_date=2025-10-15&end_date=2026-06-05`),
+      get(`https://archive-api.open-meteo.com/v1/archive?${base}&start_date=2024-06-01&end_date=2026-06-05`),
       get(`https://api.open-meteo.com/v1/forecast?${base}&past_days=92&forecast_days=1`).catch(()=>null)]);
     const idx=new Map();const add=d=>{if(!d)return;d.hourly.time.forEach((t,i)=>{if(d.hourly.pressure_msl[i]!=null&&!idx.has(t))idx.set(t,{d,i});});};
     add(a);add(f);
