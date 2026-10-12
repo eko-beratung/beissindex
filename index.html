@@ -77,6 +77,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .boatcard select{color:var(--ink);background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:6px 8px;min-height:36px;font-size:.85rem;max-width:52%}
 .bstatus{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;font-weight:800;font-size:1.05rem}
 .bstatus .dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 12px currentColor}
+.bstatus{background:var(--chip);color:var(--muted)}
 .bstatus.l0{background:rgba(61,220,132,.14);color:#8ff0b8}.bstatus.l1{background:rgba(255,181,71,.16);color:#ffd38a}.bstatus.l2{background:rgba(255,107,90,.16);color:#ff9d90}
 .bstatus .dot{background:currentColor}
 .bwhy{margin:8px 0 0;padding-left:20px;font-size:.9rem}.bwhy li{margin:3px 0}.bwhy li.info{color:var(--muted)}
@@ -314,7 +315,7 @@ body.sheet-open{overflow:hidden}
       <div class="status" id="wxStatus">Wetterdaten werden geladen …</div>
     </div>
 
-    <div class="card boatcard" id="boatCard" hidden>
+    <div class="card boatcard" id="boatCard">
       <div class="cardhead"><h2>⛵ Mit dem Boot raus?</h2>
         <select id="boatType" aria-label="Bootsgröße"><option value="small">bis 4,5 m, offen</option><option value="mid">4,5–6 m</option><option value="big">über 6 m, Kajüte</option></select></div>
       <div class="bstatus" id="boatStatus"></div>
@@ -428,7 +429,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-11</p>
+      <p class="note">Version 2026-10-12 (Boots-Ampel)</p>
     </div>
   </section>
 </main>
@@ -655,7 +656,7 @@ function ruleText(rl){
 function blocked(t){if(SP().banned)return 'Fangverbot';const rl=ruleFor(state.species,t);return rl&&rl.closed?'Schonzeit':null;}
 Object.assign(SPECIES,{
   lufer:{name:'Blaubarsch (Lüfer)',t:[14,17,24,27],act:{dusk:1,day:.7,night:.3},sky:{over:3,sun:0},moon:3,season:[9,10,11,12],water:true,
-    info:'Schwarmräuber, im Schwarzen Meer und Bosporus vor allem im Herbst auf Wanderung. Jagt in der Dämmerung oft an der Oberfläche.'},
+    info:'Schwarmräuber, zieht im Herbst vom Schwarzen Meer durch Bosporus und Marmarameer. Jagt in der Dämmerung oft an der Oberfläche.'},
   istavrit:{name:'Stöcker (İstavrit)',t:[10,14,22,26],act:{dusk:1,day:.8,night:.4},sky:{over:0,sun:0},moon:0,water:true,
     info:'Kleiner Schwarmfisch, mit Paternoster leicht zu fangen. Guter Köderfisch.'},
   hamsi:{name:'Sardelle (Hamsi)',t:[8,12,20,24],act:{dusk:1,day:.8,night:.3},sky:{over:0,sun:0},moon:0,season:[11,12,1,2,3],water:true,
@@ -668,6 +669,8 @@ Object.assign(SPECIES,{
     info:'Kaltwasserliebend, im Schwarzen Meer vor allem im Winter und Frühjahr in Küstennähe.'},
   barbun:{name:'Rotbarbe (Barbun)',t:[12,15,22,26],act:{dusk:.9,day:.9,night:.2},sky:{over:0,sun:0},moon:0,water:true,
     info:'Bodenfisch über Sand, tagaktiv. Fang mit kleinen Haken und Wurm.'},
+  palamut:{name:'Pelamide (Palamut)',t:[14,17,24,27],act:{dusk:1,day:.8,night:.2},sky:{over:3,sun:0},moon:3,season:[9,10,11],water:true,
+    info:'Schneller Schwarmräuber (Bonito), zieht im Herbst durch Bosporus und Marmarameer. Beißt in der Dämmerung auf Blinker und Fischfetzen.'},
   dorade:{name:'Goldbrasse (Çipura)',t:[14,17,25,28],act:{dusk:1,day:.8,night:.3},sky:{over:3,sun:0},moon:3,water:true,
     info:'Mittelmeer und Atlantikküste, über Felsen und Seegras. Beißt gern auf Muschel und Krebs.'}
 });
@@ -677,15 +680,17 @@ const WATERS={
   ostsee:{name:'Ostsee (Küste/Förde)',big:['meerforelle','hornhecht','plattfisch','makrele','hering'],bait:['hering','sandaal','grundel','sprotte'],banned:['dorsch']},
   nordsee:{name:'Nordsee (Küste/Watt)',big:['wolfsbarsch','makrele','plattfisch','hornhecht'],bait:['hering','sandaal','sprotte']},
   bergland:{name:'Bergland (Forellengewässer)',big:['bachforelle','regenbogenforelle','hecht','barbe','aesche','doebel'],bait:['gruendling','rotauge']},
-  schwarzmeer:{name:'Schwarzes Meer / Marmara',big:['lufer','wolfsbarsch','kalkan','mezgit','kefal','barbun'],bait:['istavrit','hamsi']},
+  schwarzmeer:{name:'Schwarzes Meer',big:['lufer','palamut','wolfsbarsch','kalkan','mezgit','kefal','barbun'],bait:['istavrit','hamsi']},
+  marmara:{name:'Marmarameer / Bosporus',big:['lufer','palamut','wolfsbarsch','dorade','barbun','kefal'],bait:['istavrit','hamsi']},
   mittelmeer:{name:'Mittelmeer',big:['wolfsbarsch','dorade','lufer','barbun','kefal'],bait:['istavrit','hamsi']},
   atlantik:{name:'Meer (Küste)',big:['wolfsbarsch','makrele','plattfisch','dorade','hornhecht'],bait:['sandaal','hering','sprotte']}
 };
-const SEA_TYPES=['ostsee','nordsee','schwarzmeer','mittelmeer','atlantik'];
-const WSHORT={binnen:'Binnengewässer',ostsee:'Ostsee',nordsee:'Nordsee',bergland:'Bergland',schwarzmeer:'Schwarzes Meer',mittelmeer:'Mittelmeer',atlantik:'Meer'};
+const SEA_TYPES=['ostsee','nordsee','schwarzmeer','marmara','mittelmeer','atlantik'];
+const WSHORT={binnen:'Binnengewässer',ostsee:'Ostsee',nordsee:'Nordsee',bergland:'Bergland',schwarzmeer:'Schwarzes Meer',marmara:'Marmarameer',mittelmeer:'Mittelmeer',atlantik:'Meer'};
 function seaFor(lat,lng){
   if(lat>=53.85&&lat<=66&&lng>=9.3&&lng<=30.5)return 'ostsee';
-  if(lat>=40&&lat<=47.6&&lng>=26&&lng<=42)return 'schwarzmeer';   // inkl. Marmara, Asowsches Meer
+  if(lat>=40.2&&lat<=41.12&&lng>=26.6&&lng<=29.95)return 'marmara';   // inkl. Bosporus und Dardanellen
+  if(lat>=40.9&&lat<=47.6&&lng>=27.4&&lng<=42)return 'schwarzmeer';    // inkl. Asowsches Meer
   if(lat>=30&&lat<=46.5&&lng>=-5.6&&lng<=36.5)return 'mittelmeer';
   if(lat>=50.5&&lat<=62&&lng>=-4&&lng<=9.3)return 'nordsee';
   return 'atlantik';
@@ -1041,7 +1046,7 @@ let wnEdit=false;
 function regionHint(){
   const r=state.region||'';
   if(r==='Brandenburg')return 'In Brandenburg gehören viele Gewässer zum Landesanglerverband (LAVB, Gewässerverzeichnis auf dessen Website). Andere haben eigene Karten, etwa die Havelkarte der Fischereigenossenschaft.';
-  if(r==='Berlin')return 'In Berlin gibt es Landesgewässer und Gewässer von Verbänden und Vereinen (z. B. DAV Landesverband Berlin). Welche Karte gilt, steht beim jeweiligen Bewirtschafter.';
+  if(r==='Berlin')return 'In Berlin gibt es Gewässer in Verwaltung des Fischereiamts (Angelkarte über das Land Berlin, auch online) und Vereins- bzw. Verbandsgewässer (z. B. DAV Landesverband Berlin). Welche Karte gilt, steht beim jeweiligen Bewirtschafter.';
   if(r)return 'Wer ein Gewässer bewirtschaftet (Verband, Verein, Genossenschaft, privat), ist regional verschieden. Vor dem Angeln die Angelkarte klären.';
   return '';
 }
@@ -1049,11 +1054,13 @@ function renderWaterInfo(){
   const el=$('waterInfo');if(!el)return;
   if(isSea()){el.hidden=true;return;}el.hidden=false;
   const nm=state.waterName,note=waterNotes[wnKey()]||'';
-  const q=encodeURIComponent(`${nm||state.place.replace(/^📍\s*/,'')} ${state.region||''} Angelkarte Gewässerbewirtschafter`);
+  const wn=nm||state.place.replace(/^📍\s*/,'').split('·')[0].trim();
+  const q=encodeURIComponent(`${wn} ${state.region||''} Angelkarte Gewässerbewirtschafter`);
   el.innerHTML=`<div class="wn">💧 ${nm?esc(nm)+(state.waterKind?' <span class="sub">('+esc(state.waterKind)+')</span>':''):'<span class="sub">Kein Gewässer am gewählten Punkt erkannt</span>'}</div>`+
     (wnEdit?`<div class="row"><input type="text" id="wnInput" maxlength="120" placeholder="z. B. LAVB, DAV Berlin, Havelkarte, Verein …" value="${esc(note)}"><button type="button" class="infobtn" id="wnSave">Speichern</button></div>`
       :`<div>Bewirtschafter / Angelkarte: ${note?'<b>'+esc(note)+'</b>':'<span class="sub">nicht hinterlegt</span>'}</div>`)+
-    `<div class="row"><button type="button" class="infobtn" id="wnEditBtn">✎ ${note?'Ändern':'Eintragen'}</button><a class="infobtn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/search?q=${q}">🔎 Nachschlagen</a></div>`+
+    `<div class="row"><button type="button" class="infobtn" id="wnEditBtn">✎ ${note?'Ändern':'Eintragen'}</button><a class="infobtn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/search?q=${q}">🔎 Websuche</a></div>`+
+    `<div class="sub" style="margin-top:6px">Kanäle und Flüsse sind oft abschnittsweise verschiedenen Vereinen zugeordnet. Gefundenes oben als Notiz eintragen.</div>`+
     (regionHint()?`<div class="sub" style="margin-top:6px">${esc(regionHint())}</div>`:'');
 }
 document.addEventListener('click',e=>{
@@ -1087,8 +1094,8 @@ function boatAssess(W,t){
 }
 function renderBoat(shown,t){
   const card=$('boatCard'),bt=$('boatType');
-  if(WTYPE()==='bergland'||!shown.W){card.hidden=true;return;}
   card.hidden=false;bt.value=boatType;
+  if(!shown.W){$('boatStatus').className='bstatus';$('boatStatus').innerHTML='<span class="dot"></span>Keine Wetterdaten für diesen Zeitpunkt';$('boatWhy').innerHTML='<li class="info">Sobald Wetterdaten geladen sind, erscheint hier die Einschätzung.</li>';$('boatHours').innerHTML='';return;}
   const a=boatAssess(shown.W,t),txt=['Ausfahrt vertretbar','Nur mit Erfahrung, in Landnähe, Wetter beobachten','Nicht rausfahren'][a.lv];
   $('boatStatus').className='bstatus l'+a.lv;$('boatStatus').innerHTML=`<span class="dot"></span>${txt}`;
   $('boatWhy').innerHTML=a.why.some(w=>!w.info)||a.why.length?a.why.map(w=>`<li class="${w.info?'info':''}">${esc(w.txt)}</li>`).join(''):'<li class="info">Wind, Wellen, Sicht und Gewitterlage unauffällig.</li>';
