@@ -26,7 +26,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends Activity {
-    private static final String HOME = "https://eko-beratung.github.io/beissindex/";
+    private static final String HOME = "https://eko-beratung.github.io/beissindex/#ort";
     private static final int IMPORT = 101, EXPORT = 102, LOCATION = 103;
     private WebView browser;
     private android.webkit.ValueCallback<Uri[]> fileCallback;
@@ -70,7 +70,10 @@ public class MainActivity extends Activity {
                     "var click=HTMLAnchorElement.prototype.click;" +
                     "HTMLAnchorElement.prototype.click=function(){var blob=items.get(this.href);" +
                     "if(this.download&&blob){var name=this.download;blob.text().then(function(t){AndroidDownloads.saveFile(name,t,blob.type);});return;}" +
-                    "return click.call(this);};})();",null);
+                    "return click.call(this);};" +
+                    "if(location.hash===\'#ort\' && typeof openPlace===\'function\' && !window.__beissOrtOpened){" +
+                    "window.__beissOrtOpened=true;openPlace();}" +
+                    "})();",null);
             }
         });
         browser.setWebChromeClient(new WebChromeClient() {
