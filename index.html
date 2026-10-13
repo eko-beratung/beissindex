@@ -225,7 +225,8 @@ input[type=text],input[type=number],input[type=date],input[type=datetime-local],
 .filebtn{display:inline-flex;align-items:center;justify-content:center}
 .install{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:16px;padding:12px 14px;margin:0 0 14px;font-size:.9rem}
 .install button{display:inline-block;margin:8px 8px 0 0;font-weight:700;border:0;border-radius:10px;padding:6px 12px;background:var(--chip);color:var(--ink);cursor:pointer}
-#map .leaflet-tile-pane{filter:brightness(.85) invert(1) contrast(.9) hue-rotate(200deg) saturate(.6)}
+#miniMap{height:190px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--bg2);z-index:0}
+#miniMap .leaflet-tile-pane,#map .leaflet-tile-pane{filter:brightness(.85) invert(1) contrast(.9) hue-rotate(200deg) saturate(.6)}
 #map{height:min(62vh,460px);border-radius:16px;border:1px solid var(--line);overflow:hidden;background:var(--bg2);z-index:0}
 
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:950;width:min(520px,calc(100% - 28px));
@@ -319,6 +320,11 @@ body.sheet-open{overflow:hidden}
       <div class="gfoot"><div class="calbadge" id="calBadge" hidden>an deine Fänge angepasst</div><div class="verdict" id="verdict"></div><div class="sub" id="scoreSub"></div>
         <button type="button" class="infobtn" id="infoBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg> Was beeinflusst den Wert?</button>
         <button type="button" class="infobtn" id="shareSpot">📤 Ort teilen</button></div>
+    </div>
+
+    <div class="card minicard">
+      <div class="cardhead"><h2>Karte</h2><button type="button" class="infobtn" id="miniOpen">Groß öffnen</button></div>
+      <div id="miniMap" role="img" aria-label="Kartenausschnitt um den Standort"></div>
     </div>
 
     <div class="card wxcard">
@@ -452,7 +458,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-15d (Teilen und Fotos)</p>
+      <p class="note">Version 2026-10-16 (schneller, Karte in Prognose)</p>
     </div>
   </section>
 </main>
@@ -551,8 +557,8 @@ function moonIllum(t){
 const KEY='beissindex:live:v1';
 const state={lat:52.5357,lng:13.1997,place:'Berlin Spandau',species:'zander',waterMode:'auto',waterAuto:'binnen',region:'Berlin',date:todayStr()};
 let wx=null;
-try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','species','waterMode','waterAuto','region','country','countryName','waterName','waterKind'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,region:state.region,country:state.country,countryName:state.countryName,waterName:state.waterName,waterKind:state.waterKind,wx}));}catch(_){}}
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','city','species','waterMode','waterAuto','region','country','countryName','waterName','waterKind'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,city:state.city,region:state.region,country:state.country,countryName:state.countryName,waterName:state.waterName,waterKind:state.waterKind,wx}));}catch(_){}}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dayBounds(str){const [y,m,d]=str.split('-').map(Number);return [new Date(y,m-1,d).getTime(),new Date(y,m-1,d+1).getTime()];}
 const dstr=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -716,6 +722,18 @@ const MARINE=['dorsch','seelachs','pollack','leng','heilbutt','meerforelle','wol
 const BAIT=new Set(['sardalya','barsch','rotauge','gruendling','ukelei','rotfeder','brasse','hering','sandaal','grundel','sprotte','istavrit','hamsi']);
 let gbif={};try{gbif=JSON.parse(localStorage.getItem('beissindex:gbif')||'{}');}catch(_){gbif={};}
 let gbifBusy=null;
+let knownKeys={};try{knownKeys=JSON.parse(localStorage.getItem('beissindex:gbifkeys')||'{}');}catch(_){knownKeys={};}
+const KEYSCI={};for(const [s,k] of Object.entries(knownKeys))if(k)KEYSCI[k]=s;
+let keysP=null;
+function ensureKnownKeys(){
+  const missing=[...new Set(Object.values(SCI))].filter(s=>!(s in knownKeys));
+  if(!missing.length)return Promise.resolve();
+  if(keysP)return keysP;
+  keysP=(async()=>{for(let i=0;i<missing.length;i+=10)await Promise.all(missing.slice(i,i+10).map(async s=>{
+      try{const r=await fetch('https://api.gbif.org/v1/species/match?rank=SPECIES&strict=true&name='+encodeURIComponent(s));if(r.ok){const j=await r.json();knownKeys[s]=j.usageKey?String(j.usageKey):null;if(j.usageKey)KEYSCI[String(j.usageKey)]=s;}}catch(_){}}));
+    try{localStorage.setItem('beissindex:gbifkeys',JSON.stringify(knownKeys));}catch(_){}keysP=null;})();
+  return keysP;
+}
 async function loadGBIF(lat,lng,sea){
   const key=G2(lat)+','+G2(lng)+'|'+(sea?'m':'f');
   if(gbif[key]&&Date.now()-gbif[key].t<60*dayMs)return gbif[key];
@@ -746,9 +764,10 @@ const DANGER=[
 let gbifSp={};try{gbifSp=JSON.parse(localStorage.getItem('beissindex:gbifsp')||'{}');}catch(_){gbifSp={};}
 let gbifAll={};try{gbifAll=JSON.parse(localStorage.getItem('beissindex:gbifall')||'{}');}catch(_){gbifAll={};}
 let gbifClass=null;try{gbifClass=+localStorage.getItem('beissindex:gbifclass')||null;}catch(_){}
+let onGbifPartial=key=>{if(key===G2(state.lat)+','+G2(state.lng)){speciesChips();fillSpeciesSelect();render();}};
 function registerDynamic(){
   for(const [k,s] of Object.entries(gbifSp)){
-    if(!s||!s.sci||SCI_REV[s.sci])continue;
+    if(!s||!s.sci||SCI_REV[s.sci]||KEYSCI[k])continue;
     const id='g'+k;if(SPECIES[id])continue;
     const sea=!!s.sea;const danger=DANGER.find(d=>d.test(s));
     SPECIES[id]={name:s.de||s.en||s.sci,t:sea?[8,12,23,27]:[4,10,22,27],act:{dusk:1,day:.7,night:.5},sky:{over:0,sun:0},moon:3,water:sea,generic:true,sci:s.sci,danger:danger?danger.txt:null,
@@ -767,16 +786,21 @@ async function loadGBIFAll(lat,lng,sea){
     if(!j)return null;
     if((j.count||0)<300){const j2=await q(75);if(j2&&(j2.count||0)>(j.count||0)){j=j2;km=75;}}
     const list=((j.facets&&j.facets[0]&&j.facets[0].counts)||[]).map(c=>({k:c.name,c:c.count}));
-    // Namen nachladen (einmalig je Art, danach aus dem Speicher)
-    const need=list.filter(x=>!gbifSp[x.k]);
-    for(let i=0;i<need.length;i+=6)await Promise.all(need.slice(i,i+6).map(async x=>{
+    // Bekannte Arten über einmalig gespeicherte GBIF-Schlüssel sofort zuordnen
+    await ensureKnownKeys();
+    const quick={};for(const x of list){const sci=KEYSCI[x.k];if(sci)quick[sci]=(quick[sci]||0)+x.c;}
+    gbifAll[key]={t:Date.now(),list,counts:quick,km,total:j.count||0,partial:true};
+    if(typeof onGbifPartial==='function')onGbifPartial(key);
+    // Namen weiterer Arten im Hintergrund (einmalig je Art, danach aus dem Speicher)
+    const need=list.filter(x=>!gbifSp[x.k]&&!KEYSCI[x.k]);
+    for(let i=0;i<need.length;i+=10)await Promise.all(need.slice(i,i+10).map(async x=>{
       try{const [a,b]=await Promise.all([fetch('https://api.gbif.org/v1/species/'+x.k).then(r=>r.ok?r.json():null),fetch('https://api.gbif.org/v1/species/'+x.k+'/vernacularNames?limit=60').then(r=>r.ok?r.json():null)]);
         if(!a)return;const vn=(b&&b.results)||[];const pick=l=>{const v=vn.find(n=>n.language===l);return v?v.vernacularName.replace(/^./,c=>c.toUpperCase()):null;};
         gbifSp[x.k]={sci:a.canonicalName||a.scientificName,family:a.family||'',de:pick('deu'),en:pick('eng'),sea};}catch(_){}
     }));
     try{localStorage.setItem('beissindex:gbifsp',JSON.stringify(gbifSp));}catch(_){}
     registerDynamic();
-    const counts={};for(const x of list){const s=gbifSp[x.k];if(s&&s.sci)counts[s.sci]=(counts[s.sci]||0)+x.c;}
+    const counts={};for(const x of list){const s=KEYSCI[x.k]||(gbifSp[x.k]&&gbifSp[x.k].sci);if(s)counts[s]=(counts[s]||0)+x.c;}
     const res={t:Date.now(),list,counts,km,total:j.count||0};gbifAll[key]=res;
     const ks=Object.keys(gbifAll);if(ks.length>30)delete gbifAll[ks[0]];
     try{localStorage.setItem('beissindex:gbifall',JSON.stringify(gbifAll));}catch(_){}
@@ -785,7 +809,7 @@ async function loadGBIFAll(lat,lng,sea){
 }
 function extraSpecies(){
   const g=gbifAll[G2(state.lat)+','+G2(state.lng)];if(!g)return [];
-  return g.list.map(x=>gbifSp[x.k]&&!SCI_REV[gbifSp[x.k].sci]?'g'+x.k:null).filter(k=>k&&SPECIES[k]).slice(0,25);
+  return g.list.map(x=>!KEYSCI[x.k]&&gbifSp[x.k]&&!SCI_REV[gbifSp[x.k].sci]?'g'+x.k:null).filter(k=>k&&SPECIES[k]).slice(0,25);
 }
 function speciesLists(){
   const W=WATERS[WTYPE()],sea=isSea(),key=G2(state.lat)+','+G2(state.lng)+'|'+(sea?'m':'f'),ga=gbifAll[G2(state.lat)+','+G2(state.lng)];
@@ -1060,7 +1084,8 @@ function render(){
   A=analyze();
   const {ds,de,series,ev}=A,now=Date.now(),isToday=now>=ds&&now<de;
   $('placeLabel').textContent=state.place;
-  $('placeSub').textContent=SP().name+' · '+(WSHORT[WTYPE()]||'');
+  {const pl=state.place.replace(/^📍\s*/,''),c=state.city&&!pl.includes(state.city)?state.city:'';
+   $('placeSub').textContent=[c,(state.countryName&&state.country&&state.country!=='de')?state.countryName:'',SP().name,WSHORT[WTYPE()]||''].filter(Boolean).join(' · ');}
   if(typeof updateMapPlace==='function')updateMapPlace();
   $('speciesInfo').textContent=SP().info;
   {const rl=ruleFor(state.species,Date.parse(state.date+'T12:00'));const el=$('speciesRule');
@@ -1361,6 +1386,7 @@ function showTab(name){
   document.querySelectorAll('.tabbar button').forEach(b=>{if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   document.querySelector('.days').hidden=name!=='prog';
   window.scrollTo(0,0);
+  if(name==='prog')setTimeout(updateMini,60);
   if(name==='map'){if(!map){initMap();if(map){map.on('dragstart zoomstart',()=>{map._userMoved=true;});updateMapPlace();updateMapCatches();}}else setTimeout(()=>map.invalidateSize(),60);}
 }
 document.querySelector('.tabbar').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)showTab(b.dataset.tab);});
@@ -1574,7 +1600,7 @@ async function waterAt(lat,lng){
 async function overpassQuery(q){
   // Hauptserver ist oft ausgelastet: zweiten Server als Ersatz
   for(const url of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']){
-    try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),12000);
+    try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),6000);
       const r=await fetch(url,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal});
       clearTimeout(tm);if(r.ok)return await r.json();}catch(_){}
   }
@@ -1603,26 +1629,31 @@ async function setPlace(name,lat,lng,knownWater){
   fia=null;fiaKey=null;
   if(Math.hypot((lat-state.lat)*111,(lng-state.lng)*111*Math.cos(lat*rad))>30&&state.waterMode!=='auto'){state.waterMode='auto';}
   // alte Region/Länderregeln sofort verwerfen, bis die neue erkannt ist
-  state.region=null;state.country=null;state.countryName='';
+  state.region=null;state.country=null;state.countryName='';state.city='';
   state.waterName=knownWater?knownWater.name:null;state.waterKind=knownWater?knownWater.kind:'';
   if(map)map._userMoved=false;
   if(!$('oSheet').hidden)closePlace();
   setTimeout(renderSpots,0);
   state.place=name;state.lat=+(+lat).toFixed(4);state.lng=+(+lng).toFixed(4);persist();
   hitsEl.innerHTML='';qEl.value='';msg.textContent=`Standort: ${name}`;if(typeof syncFormPlace==='function')syncFormPlace();showManual();render();
-  const myKey=wxKey();
+  const myKey=wxKey(),same=()=>wxKey()===myKey,guessSea=isSea();
   renderWaterInfo();
-  loadFIA(state.lat,state.lng).then(()=>{if(wxKey()===myKey)renderWaterInfo();});
-  if(!knownWater)waterAt(state.lat,state.lng).then(w=>{if(wxKey()!==myKey||!w)return;state.waterName=w.name;state.waterKind=w.kind;persist();render();});
+  // Alles gleichzeitig starten, jedes Ergebnis erscheint, sobald es da ist
+  loadFIA(state.lat,state.lng).then(()=>{if(same())renderWaterInfo();});
+  if(!knownWater)waterAt(state.lat,state.lng).then(w=>{if(!same()||!w)return;state.waterName=w.name;state.waterKind=w.kind;persist();render();});
+  reverseName(state.lat,state.lng).then(rv=>{if(!same()||!rv)return;
+    state.city=rv.city||'';if(rv.state){state.region=rv.state;state.country=rv.cc||'';state.countryName=rv.country||'';}persist();speciesChips();fillSpeciesSelect();render();});
+  const wxP=loadWeather(true).then(()=>{if(same())render();});
+  const gbP=loadGBIFAll(state.lat,state.lng,guessSea).then(g=>{if(!same())return;if(g){speciesChips();fillSpeciesSelect();render();}
+    if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,isSea()).then(g2=>{if(g2&&same()){speciesChips();fillSpeciesSelect();render();}});});
+  loadPegel(true).then(()=>{if(same())render();});
   const wt=await detectWater(state.lat,state.lng);
-  if(wxKey()!==myKey)return; // inzwischen wurde ein anderer Ort gewählt
+  if(!same())return;
   if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
-  detectRegion(state.lat,state.lng).then(rg=>{if(rg&&wxKey()===myKey){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();speciesChips();fillSpeciesSelect();render();}});
-  loadPegel(true).then(render);
-  loadGBIFAll(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g=>{if(wxKey()!==myKey)return;if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,SEA_TYPES.includes(wt||state.waterAuto)).then(g2=>{if(g2&&wxKey()===myKey){speciesChips();fillSpeciesSelect();render();}});});
-  if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();
-    if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;}
-  await loadWeather(true);render();
+  if(wt&&wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();fillSpeciesSelect();
+    if(state.waterMode==='auto')msg.textContent=`Standort: ${name} · erkannt als ${WATERS[wt].name}`;
+    if(isSea()!==guessSea){await wxP;if(same()){await loadWeather(true);if(same())render();}}   // Meer: Wellen und Meerestemperatur nachladen
+    else render();}
 }
 function showHits(list){
   hitsEl.innerHTML=list.slice(0,8).map((p,i)=>`<li><button type="button" data-i="${i}">${esc(p.name)}<small>${(+p.lat).toFixed(3)}, ${(+p.lng).toFixed(3)}${p.coarse?' · Fluss/Kanal: Position grob, genaue Stelle auf der Karte wählen':''}</small></button></li>`).join('');
@@ -1651,7 +1682,7 @@ async function reverseName(lat,lng){
     const local=a.suburb||a.village||a.town||a.city_district||a.hamlet||a.municipality||a.city||j.name||'';
     const city=a.city||a.town||a.municipality||'';
     const name=[local,city&&city!==local?city:''].filter(Boolean).join(', ');
-    return {name:name||null,state:a.state||a.city||null};}catch(_){return null;}
+    return {name:name||null,city:city||local||'',state:a.state||a.county||a.city||a.country||null,cc:(a.country_code||'').toLowerCase(),country:a.country||''};}catch(_){return null;}
 }
 function getPosition(){
   return new Promise((res,rej)=>{
@@ -1778,7 +1809,26 @@ function initMap(){
   });
   setTimeout(()=>map.invalidateSize(),300);
 }
+let mini=null,miniMarker=null,miniCatch=null;
+function updateMini(){
+  if(typeof L==='undefined'||$('tab-prog').hidden)return;
+  const ll=[state.lat,state.lng];
+  if(!mini){
+    mini=L.map('miniMap',{zoomControl:false,attributionControl:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,tap:false}).setView(ll,13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(mini);
+    miniCatch=L.layerGroup().addTo(mini);
+    mini.on('click',()=>{showTab('map');setTimeout(()=>{if(map)map.setView([state.lat,state.lng],14);},150);});
+  }
+  mini.setView(ll,13);
+  if(!miniMarker)miniMarker=L.circleMarker(ll,{radius:9,color:'#fff',weight:3,fillColor:'#d7362b',fillOpacity:1}).addTo(mini);else miniMarker.setLatLng(ll);
+  miniCatch.clearLayers();
+  catches.forEach(c=>{if(c.lat!=null&&isFinite(c.lat)&&Math.abs(c.lat-state.lat)<0.1&&Math.abs(c.lng-state.lng)<0.15)
+    L.circleMarker([c.lat,c.lng],{radius:5,color:'#fff',weight:1.5,fillColor:RES_COLOR[c.result]||'#8a9699',fillOpacity:.95}).addTo(miniCatch);});
+  setTimeout(()=>mini.invalidateSize(),50);
+}
+$('miniOpen').onclick=()=>{showTab('map');setTimeout(()=>{if(map)map.setView([state.lat,state.lng],14);},150);};
 function updateMapPlace(){
+  updateMini();
   if(!map)return;
   const ll=[state.lat,state.lng];
   if(!placeMarker)placeMarker=L.circleMarker(ll,{radius:9,color:'#fff',weight:3,fillColor:'#d7362b',fillOpacity:1}).addTo(map);
@@ -2460,6 +2510,8 @@ loadCommunity();
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
 loadFIA(state.lat,state.lng).then(renderWaterInfo);
+if(!state.city)reverseName(state.lat,state.lng).then(rv=>{if(rv){state.city=rv.city||'';if(rv.state&&!state.region){state.region=rv.state;state.country=rv.cc||'';state.countryName=rv.country||'';}persist();render();}});
+setTimeout(updateMini,300);
 loadGBIFAll(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,isSea()).then(g2=>{if(g2){speciesChips();fillSpeciesSelect();render();}});});
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
   if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
