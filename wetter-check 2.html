@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wetter zu Fängen – Havel Spandau</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#070d18;color:#eef3fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 40px}
+h1{font-size:1.3rem;margin:0 0 6px}p{color:#9fb0c8;font-size:.92rem;margin:6px 0}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:10px 16px;background:#2f6bff;color:#fff;cursor:pointer;margin:8px 8px 8px 0}
+.wrap{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;font-size:.85rem;min-width:760px}
+th,td{padding:6px 8px;border-bottom:1px solid #22304a;text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{color:#9fb0c8;font-weight:600}
+#status{font-weight:700}
+.sum{background:#121c2e;border:1px solid #22304a;border-radius:14px;padding:10px 14px;margin-top:12px;font-size:.92rem}
+</style>
+</head>
+<body>
+<h1>Wetter zu den Fängen: Havel und Tegeler See (122)</h1>
+<p>Holt für jeden Fang Temperatur, Luftdruck, Drucktendenz (3 Std.), Bewölkung, Wind und Regen aus dem Open-Meteo-Archiv, jeweils für das richtige Gewässer. Nur Art, Zeit, Größe und Köder, keine Namen.</p>
+<button id="go">Wetter abrufen</button><button id="csv" hidden>Als CSV speichern</button>
+<div id="status"></div>
+<div class="wrap"><table id="t"></table></div>
+<div class="sum" id="sum" hidden></div>
+<script>
+const F=[["Hecht", "2023-11-05T14:42", 75, "Gummifisch", "Tegeler See"], ["Hecht", "2023-11-17T15:13", 98, "Gummifisch", "Tegeler See"], ["Hecht", "2023-11-19T11:01", 101, "Köderfisch", "Tegeler See"], ["Hecht", "2023-11-19T13:20", 83, "Köderfisch", "Tegeler See"], ["Hecht", "2023-11-26T12:25", 102, "Köderfisch", "Tegeler See"], ["Hecht", "2023-12-16T14:37", 63, "Gummifisch", "Tegeler See"], ["Hecht", "2023-12-30T15:43", 98, "Crankbait", "Tegeler See"], ["Hecht", "2024-05-01T17:49", 82, "Gummifisch", "Tegeler See"], ["Hecht", "2024-05-01T19:26", 85, "Jerkbait", "Tegeler See"], ["Hecht", "2024-05-01T19:58", 56, "Gummifisch", "Tegeler See"], ["Hecht", "2024-05-02T10:06", 94, "Popper", "Tegeler See"], ["Hecht", "2024-05-02T19:49", 55, "Jerkbait", "Tegeler See"], ["Zander", "2024-05-03T05:58", 84, "Jerkbait", "Tegeler See"], ["Hecht", "2024-05-03T19:42", 93, "Makrelen- / Heringspaternoster", "Tegeler See"], ["Hecht", "2024-05-04T09:00", 87, "Jerkbait", "Tegeler See"], ["Hecht", "2024-05-05T14:20", 92, "Gummifisch", "Tegeler See"], ["Hecht", "2024-05-10T14:18", 55, "Gummifisch", "Tegeler See"], ["Hecht", "2024-05-16T20:21", 55, "Jerkbait", "Tegeler See"], ["Hecht", "2024-05-24T23:57", 54, "Gummifisch", "Tegeler See"], ["Hecht", "2024-05-29T07:34", 96, "Gummifisch", "Tegeler See"], ["Hecht", "2024-06-02T18:16", 68, "Hegene", "Tegeler See"], ["Hecht", "2024-06-02T18:18", 65, "Nassfliege", "Tegeler See"], ["Hecht", "2024-06-02T18:21", 50, "Nymphe", "Tegeler See"], ["Hecht", "2024-06-04T15:04", 65, "Gummifisch", "Tegeler See"], ["Hecht", "2024-06-04T15:38", 60, "Garnelenimitat", "Tegeler See"], ["Hecht", "2024-06-06T16:45", 62, "Jig Spinner", "Tegeler See"], ["Hecht", "2024-06-14T10:07", 111, "Crankbait", "Tegeler See"], ["Hecht", "2024-06-15T07:45", 82, "Gummifisch", "Tegeler See"], ["Hecht", "2024-06-16T05:48", 107, "Gummifisch", "Tegeler See"], ["Hecht", "2024-06-16T20:39", 99, "Gummifisch", "Havel Spandau"], ["Hecht", "2024-06-20T09:07", 92, "Gummifisch", "Tegeler See"], ["Hecht", "2024-06-23T16:13", 80, "Jerkbait", "Havel Spandau"], ["Hecht", "2024-06-26T10:00", 90, "Gummifisch", "Tegeler See"], ["Hecht", "2024-06-26T13:00", 70, "Gummifisch", "Tegeler See"], ["Hecht", "2024-06-26T15:04", 86, "Gummifisch", "Tegeler See"], ["Hecht", "2024-07-04T19:14", 100, "Chatterbait", "Tegeler See"], ["Hecht", "2024-07-17T18:52", 86, "Chatterbait", "Tegeler See"], ["Hecht", "2024-07-19T16:30", 70, "Jerkbait", "Havel Spandau"], ["Hecht", "2024-08-14T18:58", 98, "Jerkbait", "Havel Spandau"], ["Hecht", "2024-08-17T17:42", 74, "Gummifisch", "Tegeler See"], ["Hecht", "2024-08-17T19:40", 115, "Gummifisch", "Tegeler See"], ["Hecht", "2024-08-29T19:11", 86, "Spinnerbait", "Tegeler See"], ["Hecht", "2024-09-04T06:00", 89, "Gummifisch", "Tegeler See"], ["Hecht", "2024-09-06T18:40", 70, "Gummifisch", "Tegeler See"], ["Zander", "2024-09-06T20:30", 79, "Gummifisch", "Havel Spandau"], ["Zander", "2024-09-07T21:04", 65, "Gummifisch", "Havel Spandau"], ["Hecht", "2024-09-13T08:03", 64, "Jerkbait", "Havel Spandau"], ["Hecht", "2024-09-18T09:50", 70, "Jerkbait", "Havel Spandau"], ["Zander", "2024-09-21T00:30", 63, "Gummifisch", "Havel Spandau"], ["Hecht", "2024-09-22T17:11", 60, "Blinker / Spoons", "Havel Spandau"], ["Hecht", "2024-09-28T11:47", 83, "Sonstiges Imitat (Frosch, Krebs etc.)", "Tegeler See"], ["Hecht", "2024-10-05T12:05", 75, "Gummifisch", "Tegeler See"], ["Hecht", "2024-10-06T17:00", 83, "Sonstige Fliegen (Karpfenfliegen etc.)", "Tegeler See"], ["Hecht", "2024-10-11T09:24", 93, "Jerkbait", "Havel Spandau"], ["Hecht", "2024-10-14T11:09", 70, "Jerkbait", "Havel Spandau"], ["Zander", "2024-10-14T21:33", 85, "Köderfisch", "Havel Spandau"], ["Zander", "2024-10-16T13:26", 64, "Köderfisch", "Havel Spandau"], ["Hecht", "2024-10-19T09:16", 91, "Twister", "Tegeler See"], ["Hecht", "2024-10-20T14:07", 98, "Gummifisch", "Tegeler See"], ["Hecht", "2024-10-20T21:51", 80, "Sonstiger Kunstköder", "Tegeler See"], ["Zander", "2024-10-21T01:32", 63, "Gummifisch", "Havel Spandau"], ["Hecht", "2024-10-24T16:00", 104, "Spinnerbait", "Tegeler See"], ["Hecht", "2024-10-27T02:30", 79, "Sonstiges Imitat (Frosch, Krebs etc.)", "Havel Spandau"], ["Hecht", "2024-11-21T00:04", 55, "Gummifisch", "Tegeler See"], ["Hecht", "2024-11-23T12:45", 100, "Streamer", "Tegeler See"], ["Hecht", "2024-12-14T16:34", 95, "Gummifisch", "Tegeler See"], ["Hecht", "2024-12-17T15:50", 80, "Gummifisch", "Tegeler See"], ["Hecht", "2024-12-17T20:53", 70, "Gummifisch", "Tegeler See"], ["Zander", "2024-12-20T23:27", 65, "Gummifisch", "Havel Spandau"], ["Zander", "2024-12-21T18:27", 80, "Gummifisch", "Havel Spandau"], ["Zander", "2024-12-25T11:43", 73, "Gummifisch", "Havel Spandau"], ["Zander", "2024-12-26T10:05", 80, "Gummifisch", "Havel Spandau"], ["Hecht", "2024-12-29T13:15", 70, "Köderfisch", "Havel Spandau"], ["Hecht", "2024-12-30T12:05", 55, "Köderfisch", "Havel Spandau"], ["Hecht", "2024-12-30T18:58", 93, "Tintenfischimitat", "Tegeler See"], ["Zander", "2025-03-01T16:02", 85, "Wurm", "Havel Spandau"], ["Hecht", "2025-05-01T10:25", 63, "Jerkbait", "Tegeler See"], ["Hecht", "2025-05-01T11:00", 82, "Spinner", "Tegeler See"], ["Hecht", "2025-05-01T11:15", 79, "Gummifisch", "Tegeler See"], ["Hecht", "2025-05-01T12:00", 74, "Spinner", "Tegeler See"], ["Hecht", "2025-05-01T20:53", 64, "Chatterbait", "Havel Spandau"], ["Hecht", "2025-05-03T07:30", 80, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-05-04T18:56", 73, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-05-06T11:53", 78, "Jerkbait", "Tegeler See"], ["Hecht", "2025-05-06T13:58", 65, "Jerkbait", "Tegeler See"], ["Hecht", "2025-05-06T17:40", 64, "Gummifisch", "Tegeler See"], ["Hecht", "2025-05-06T18:17", 63, "Jerkbait", "Tegeler See"], ["Hecht", "2025-05-09T22:38", 70, "Jig Spinner", "Havel Spandau"], ["Hecht", "2025-05-19T13:58", 53, "Wobbler", "Tegeler See"], ["Hecht", "2025-05-28T14:17", 57, "Chatterbait", "Havel Spandau"], ["Zander", "2025-06-01T01:15", 82, "Gummifisch", "Havel Spandau"], ["Zander", "2025-06-07T01:20", 88, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-06-07T21:24", 63, "Gummifisch", "Havel Spandau"], ["Zander", "2025-06-14T01:07", 82, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-07-04T20:35", 62, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-07-06T08:34", 77, "Jig Spinner", "Havel Spandau"], ["Hecht", "2025-07-13T20:18", 73, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-08-04T07:27", 70, "Jig Spinner", "Havel Spandau"], ["Hecht", "2025-08-04T09:08", 67, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-08-11T14:06", 85, "Spinner", "Havel Spandau"], ["Hecht", "2025-08-11T17:38", 78, "Jerkbait", "Havel Spandau"], ["Hecht", "2025-10-11T12:35", 82, "Gummifisch", "Havel Spandau"], ["Zander", "2025-10-11T17:39", 50, "Gummifisch", "Havel Spandau"], ["Zander", "2025-10-19T12:54", 62, "Gummifisch", "Havel Spandau"], ["Zander", "2025-10-20T22:45", 81, "Wobbler", "Havel Spandau"], ["Zander", "2025-11-07T06:13", 81, "Gummifisch", "Havel Spandau"], ["Hecht", "2025-11-07T10:17", 90, "Gummifisch", "Havel Spandau"], ["Zander", "2025-11-12T22:37", 56, "Gummifisch", "Havel Spandau"], ["Hecht", "2026-05-01T12:07", 86, "Spinner", "Havel Spandau"], ["Zander", "2026-05-01T16:40", 80, "Gummifisch", "Havel Spandau"], ["Hecht", "2026-05-01T19:29", 77, "Blinker", "Havel Spandau"], ["Hecht", "2026-05-03T15:32", 81, "Wobbler", "Havel Spandau"], ["Hecht", "2026-05-03T16:52", 72, "Chatterbait", "Havel Spandau"], ["Hecht", "2026-05-03T18:45", 67, "Blinker", "Havel Spandau"], ["Hecht", "2026-05-06T10:40", 57, "Jig Spinner", "Havel Spandau"], ["Hecht", "2026-05-13T13:00", 55, "Gummifisch", "Havel Spandau"], ["Hecht", "2026-05-14T12:45", 65, "Crankbait", "Havel Spandau"], ["Zander", "2026-05-16T22:10", 71, "Gummifisch", "Havel Spandau"], ["Hecht", "2026-05-17T12:42", 57, "Blinker", "Havel Spandau"], ["Hecht", "2026-05-25T14:38", 102, "Gummifisch", "Havel Spandau"], ["Zander", "2026-06-01T23:10", 81, "Wobbler", "Havel Spandau"], ["Zander", "2026-06-02T18:30", 78, "Jerkbait", "Havel Spandau"]];
+const COORD={"Havel Spandau":[52.53,13.20],"Tegeler See":[52.585,13.26]};
+const fmt=v=>v==null?'–':String(Math.round(v*10)/10).replace('.',',');
+const trendTxt=d=>d==null?'–':d>=2?'stark steigend':d>=0.7?'leicht steigend':d>-0.7?'stabil':d>-2?'leicht fallend':'stark fallend';
+let rows=[];
+async function get(url){const r=await fetch(url);if(!r.ok)throw new Error('Fehler '+r.status);return r.json();}
+document.getElementById('go').onclick=async()=>{
+  const st=document.getElementById('status');st.textContent='Lade …';
+  try{
+    const vars='temperature_2m,pressure_msl,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation,relative_humidity_2m';
+    const idx={};
+    for(const [gew,[LAT,LNG]] of Object.entries(COORD)){
+      const base=`latitude=${LAT}&longitude=${LNG}&hourly=${vars}&timezone=Europe%2FBerlin&wind_speed_unit=kmh`;
+      st.textContent='Lade '+gew+' …';
+      const [a,f]=await Promise.all([
+        get(`https://archive-api.open-meteo.com/v1/archive?${base}&start_date=2023-10-25&end_date=2026-06-05`),
+        get(`https://api.open-meteo.com/v1/forecast?${base}&past_days=92&forecast_days=1`).catch(()=>null)]);
+      const m=new Map();const add=d=>{if(!d)return;d.hourly.time.forEach((t,i)=>{if(d.hourly.pressure_msl[i]!=null&&!m.has(t))m.set(t,{d,i});});};
+      add(a);add(f);idx[gew]=m;
+    }
+    rows=F.map(([sp,iso,len,bait,gew])=>{
+      const h=iso.slice(0,13)+':00',hm3=(()=>{const x=new Date(iso.slice(0,13)+':00');x.setHours(x.getHours()-3);const p=n=>String(n).padStart(2,'0');return `${x.getFullYear()}-${p(x.getMonth()+1)}-${p(x.getDate())}T${p(x.getHours())}:00`;})();
+      const M=idx[gew]||new Map(),e=M.get(h),e3=M.get(hm3),g=(k)=>e?e.d.hourly[k][e.i]:null;
+      const dp=e&&e3?e.d.hourly.pressure_msl[e.i]-e3.d.hourly.pressure_msl[e3.i]:null;
+      return {sp,iso,len,bait,gew,tmp:g('temperature_2m'),p:g('pressure_msl'),dp,cc:g('cloud_cover'),ws:g('wind_speed_10m'),wg:g('wind_gusts_10m'),pr:g('precipitation'),rh:g('relative_humidity_2m')};
+    });
+    const t=document.getElementById('t');
+    t.innerHTML='<tr><th>Art</th><th>Gewässer</th><th>Fangzeit</th><th>cm</th><th>Luft °C</th><th>hPa</th><th>Tendenz 3h</th><th>Wolken %</th><th>Wind km/h</th><th>Böen</th><th>Regen mm</th><th>Feuchte %</th></tr>'+
+      rows.map(r=>`<tr><td>${r.sp}</td><td>${r.gew}</td><td>${r.iso.replace('T',' ')}</td><td>${r.len}</td><td>${fmt(r.tmp)}</td><td>${fmt(r.p)}</td><td>${r.dp==null?'–':(r.dp>0?'+':'')+fmt(r.dp)+' ('+trendTxt(r.dp)+')'}</td><td>${fmt(r.cc)}</td><td>${fmt(r.ws)}</td><td>${fmt(r.wg)}</td><td>${fmt(r.pr)}</td><td>${fmt(r.rh)}</td></tr>`).join('');
+    const sum=document.getElementById('sum');sum.hidden=false;
+    sum.innerHTML=[['Hecht','Havel Spandau'],['Hecht','Tegeler See'],['Zander','Havel Spandau']].map(([s,g])=>{const R=rows.filter(r=>r.sp===s&&r.gew===g&&r.p!=null);if(!R.length)return '';
+      const c={};R.forEach(r=>{const k=trendTxt(r.dp);c[k]=(c[k]||0)+1;});const av=k=>fmt(R.reduce((a,r)=>a+r[k],0)/R.length);
+      return `<b>${s}, ${g}</b> (${R.length}): Ø ${av('tmp')} °C Luft, Ø ${av('p')} hPa, Ø ${av('cc')} % Wolken, Ø ${av('ws')} km/h Wind. Drucktendenz: ${Object.entries(c).map(([k,v])=>k+' '+v).join(', ')}.`;}).join('<br>');
+    document.getElementById('csv').hidden=false;st.textContent=`Fertig: ${rows.filter(r=>r.p!=null).length} von ${rows.length} Fängen mit Wetter.`;
+  }catch(e){st.textContent='Abruf fehlgeschlagen: '+e.message+'. Internetverbindung prüfen. Auf dem iPhone die Datei über GitHub öffnen, nicht aus der Dateien-App.';}
+};
+document.getElementById('csv').onclick=()=>{
+  const c=v=>v==null?'':String(Math.round(v*10)/10).replace('.',',');
+  const txt='\ufeffArt;Gewässer;Fangzeit;Länge cm;Köder;Luft °C;Luftdruck hPa;Tendenz 3h hPa;Tendenz;Wolken %;Wind km/h;Böen km/h;Regen mm;Feuchte %\n'+
+    rows.map(r=>[r.sp,r.gew,r.iso.replace('T',' '),r.len,r.bait,c(r.tmp),c(r.p),c(r.dp),trendTxt(r.dp),c(r.cc),c(r.ws),c(r.wg),c(r.pr),c(r.rh)].join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'}));a.download='faenge-havel-tegel-wetter.csv';document.body.appendChild(a);a.click();a.remove();
+};
+</script>
+</body>
+</html>
