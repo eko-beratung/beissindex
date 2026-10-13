@@ -449,7 +449,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-14c (Ausgabestelle sofort)</p>
+      <p class="note">Version 2026-10-15 (Hecht-Modell angepasst)</p>
     </div>
   </section>
 </main>
@@ -571,8 +571,8 @@ const $=id=>document.getElementById(id);
 const SPECIES={
   zander:{name:'Zander',t:[6,12,22,27],act:{dusk:1,day:.35,night:.8},sky:{over:8,sun:-5},moon:5,
     info:'Dämmerungs- und Nachtjäger, lichtempfindlich. Bedeckter Himmel und trübes Wasser helfen.'},
-  hecht:{name:'Hecht',t:[3,8,19,25],act:{dusk:1,day:.7,night:.1},sky:{over:5,sun:0},moon:10,
-    info:'Augenjäger, tagaktiv mit Spitzen in der Dämmerung. Mag kühleres Wasser, im Hochsommer träge. Mondphasen-Effekt in Studien belegt.'},
+  hecht:{name:'Hecht',t:[3,8,19,25],act:{dusk:1,day:.9,night:.1},sky:{over:2,sun:0},moon:10,
+    info:'Augenjäger, tagaktiv. Nach 98 gemeldeten Fängen an Havel und Tegeler See beißt er tagsüber etwa so gut wie in der Dämmerung, nachts kaum. Fallender oder stabiler Luftdruck und frischer Wind sind eher günstig. Mag kühleres Wasser, im Hochsommer träge. Mondphasen-Effekt in Studien belegt.'},
   wels:{name:'Wels',t:[12,18,28,32],act:{dusk:.9,day:.2,night:1},sky:{over:8,sun:-5},moon:5,
     info:'Nachtaktiver Wärmefisch. Unter etwa 12 °C kaum aktiv.'},
   barsch:{name:'Barsch',t:[5,12,24,28],act:{dusk:.9,day:.8,night:0},sky:{over:3,sun:0},moon:5,
