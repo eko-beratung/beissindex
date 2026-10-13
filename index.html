@@ -152,6 +152,8 @@ table{width:100%;border-collapse:collapse;font-size:.95rem}
 td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:top}
 td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;padding-left:10px}
 .factors td:last-child{font-weight:400;color:var(--muted)}
+.why{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}.why li{padding:8px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--line)}
+.why li.p::before{content:"✅ "}.why li.n::before{content:"➖ "}.why li.m::before{content:"⚠️ "}
 .factors tr.total td{font-weight:700;color:var(--ink);border-top:2px solid var(--ink)}
 .status{font-size:.82rem;color:var(--muted);margin-top:8px}
 .mwater{margin-top:10px}.mwater label{font-size:.88rem;color:var(--muted)}
@@ -252,7 +254,7 @@ body.sheet-open{overflow:hidden}
 .catches li{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
 .catches .h{display:flex;justify-content:space-between;gap:8px;font-weight:700}
 .catches .d{font-size:.86rem;color:var(--muted)}
-.catches .a{display:flex;gap:16px;margin-top:6px;font-size:.88rem}
+.catches .a{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;font-size:.88rem}
 .catches .a a,.catches .a button{color:var(--accent2);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 .catches img.thumb{width:72px;height:72px;object-fit:cover;border-radius:10px;float:right;margin:0 0 6px 10px;cursor:pointer}
 .eval{margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px}
@@ -315,7 +317,8 @@ body.sheet-open{overflow:hidden}
       </div>
       <div class="gside right"><div class="glabel">Wasser</div><div class="gval" id="gRight">–</div></div>
       <div class="gfoot"><div class="calbadge" id="calBadge" hidden>an deine Fänge angepasst</div><div class="verdict" id="verdict"></div><div class="sub" id="scoreSub"></div>
-        <button type="button" class="infobtn" id="infoBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg> Wie entsteht der Wert?</button></div>
+        <button type="button" class="infobtn" id="infoBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg> Was beeinflusst den Wert?</button>
+        <button type="button" class="infobtn" id="shareSpot">📤 Ort teilen</button></div>
     </div>
 
     <div class="card wxcard">
@@ -430,7 +433,7 @@ body.sheet-open{overflow:hidden}
     <div class="card">
       <div class="cardhead"><h2>Über den Beißindex</h2></div>
       <p class="note">Der Index schätzt, wie aktiv eine Fischart zu einem Zeitpunkt ist: aus Tageszeit, Wassertemperatur, Mond, Wetter und Angeldruck. Er ist ein Planungswerkzeug, keine Garantie.</p>
-      <div class="frow"><button type="button" class="btn ghost" id="moreInfo">So wird gerechnet</button><button type="button" class="btn ghost" id="moreBook">Fangbuch &amp; Sicherung</button></div>
+      <div class="frow"><button type="button" class="btn ghost" id="moreBook">Fangbuch &amp; Sicherung</button></div>
     </div>
     <div class="card">
       <div class="cardhead"><h2>Datenquellen</h2></div>
@@ -449,11 +452,12 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-15b (Angelkarten übersichtlich)</p>
+      <p class="note">Version 2026-10-15d (Teilen und Fotos)</p>
     </div>
   </section>
 </main>
 
+<input type="file" id="quickPhoto" accept="image/*" hidden>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <nav class="tabbar" aria-label="Bereiche">
   <button type="button" data-tab="prog" aria-current="page"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg><span>Prognose</span></button>
@@ -480,22 +484,14 @@ body.sheet-open{overflow:hidden}
 </div>
 <div class="sheet" id="pSheet" hidden><div class="sheethead"><button type="button" class="btn ghost" id="pClose">‹ Zurück</button><h2>Foto</h2></div><div class="sheetbody"><img id="pImg" alt="Fangfoto" style="width:100%;border-radius:12px"></div></div>
 <div class="sheet" id="iSheet" hidden role="dialog" aria-modal="true" aria-labelledby="iTitle">
-  <div class="sheethead"><button type="button" class="btn ghost" id="iClose">‹ Zurück</button><h2 id="iTitle">So entsteht der Wert</h2></div>
+  <div class="sheethead"><button type="button" class="btn ghost" id="iClose">‹ Zurück</button><h2 id="iTitle">Was den Wert beeinflusst</h2></div>
   <div class="sheetbody">
     <p class="sub" id="iWhen"></p>
-    <h3>Rechenweg</h3>
-    <table class="factors" id="factors"></table>
-    <p class="note" id="iGate"></p>
-    <h3 id="iProfTitle">Profil</h3>
-    <table class="factors" id="iProfile"></table>
+    <div id="factors"></div>
     <h3 id="calTitle">An deine Fänge angepasst</h3>
     <div id="calBody"></div>
-    <h3>So funktioniert der Beißindex</h3>
-    <p class="note">Der Wert setzt sich aus Bausteinen zusammen, die nach Studienlage unterschiedlich stark gewichtet sind. Am meisten zählt die <b>Tageszeit</b> (bis 30 Punkte), bewertet nach dem Aktivitätsmuster der Fischart: Dämmerung, Tag oder Nacht. Danach kommt die <b>Wassertemperatur</b> (bis 25 Punkte). Kleinere Bausteine sind <b>Mondphase</b> (bis 10, beim Aal Neumond statt Vollmond), <b>Mond im Zenit oder Nadir</b> (bis 8) und <b>Mondauf- oder -untergang</b> (bis 4), außerdem <b>Luftdruck</b> (±5) und <b>Himmel und Wind</b>. Abzüge gibt es für <b>Wochenenden und Feiertage</b> (mehr Angler, scheuere Fische) und für Arten <b>außerhalb ihrer Saison</b>.</p>
-    <p class="note">Danach greift der <b>Temperatur-Faktor</b>: Liegt die Wassertemperatur im Wohlfühlbereich der Art, bleibt der Wert unverändert (× 1). Je weiter sie außerhalb liegt, desto stärker wird er gedämpft, bis auf ein Viertel (× 0,25). Ein Wels bei 10 °C kann so auch zur besten Nachtzeit keinen guten Wert erreichen.</p>
-    <p class="note"><b>Wassertemperatur</b>, in dieser Reihenfolge: 1. deine eigene Messung (gilt 3 Tage), 2. ein Messpegel der Wasserstraßenverwaltung (Pegelonline) im Umkreis von 10 km, 3. an der Küste das Meeresmodell von Open-Meteo, 4. sonst eine Schätzung aus der Lufttemperatur der letzten 30 Tage, träge gewichtet, weil Seen langsam reagieren. Woher der Wert gerade stammt, steht im Wetterbereich.</p>
-    <p class="note"><b>Schonzeiten und Mindestmaße</b> sind für Berlin und Brandenburg hinterlegt (Handangel, ohne Gewähr). Das Bundesland erkennt die App über OpenStreetMap. Vereins- und Gewässerordnungen können strenger sein.</p>
-    <p class="note"><b>Grenzen:</b> Temperaturbereiche und Aktivitätsmuster sind Richtwerte aus der Fischbiologie, nicht an Fangzahlen geeicht. Die Solunar-Theorie zeigt in Studien kaum Wirkung und ist deshalb schwach gewichtet; nachgewiesen ist ein Mondeffekt etwa beim Hecht (IGB 2010). Ob der Index an deinem Gewässer stimmt, zeigt erst dein Fangbuch: Vergleiche dort den Ø Index bei Fängen und bei Nullnummern.</p>
+    <h3>Worauf der Beißindex achtet</h3>
+    <p class="note">Tageszeit und Dämmerung, Wassertemperatur, Mondphase sowie Mondauf- und -untergang, Luftdruck, Himmel und Wind, Saison und Angeldruck am Wochenende. Für jede Fischart anders gewichtet. Der Wert ist eine Orientierung, keine Garantie.</p>
   </div>
 </div>
 <div class="sheet" id="fSheet" hidden role="dialog" aria-modal="true" aria-labelledby="fSheetTitle">
@@ -1439,33 +1435,23 @@ function renderDetail(){
     }else if(wxErr){st.innerHTML=esc(`⚠ Wetterdaten nicht erreichbar (${wxErr}). Internetverbindung prüfen.`)+' <button type="button" class="infobtn" id="wxRetry">Erneut versuchen</button>';st.style.color='var(--bad)';}
   }
 
-  const p=shown.parts,rr=v=>{v=Math.round(v);return v>0?'+'+v:v<0?'−'+Math.abs(v):'0';};
-  $('factors').innerHTML=[['Grundwert',rr(p.base)],[`Tageszeit: ${shown.timeLabel}, Aktivität ${SP().name} (max. 30)`,rr(p.dusk)],[`Temperatur: ${shown.tempLabel} (max. 25)`,rr(p.temp)],
-    [`Mondphase: ${A.phaseLabel}`,rr(p.phase)],
-    ['Mond im Zenit/Nadir (max. 8)',rr(p.major)],['Mondauf-/untergang (max. 4)',rr(p.minor)],
-    [`Luftdruck: ${shown.prLabel} (±5)`,rr(p.pressure)],[`Himmel: ${shown.skyLabel}`,rr(p.sky)],
-    [`Angeldruck: ${shown.busy||'Werktag oder Feiertag nicht bundesweit'}`,rr(p.busy)],...(SP().season?[[`Saison: ${p.season<0?'außerhalb der Hauptsaison':'Hauptsaison'}`,rr(p.season)]]:[]),
-    ['Zwischensumme',String(shown.raw)],
-    [shown.W?`Temperatur-Faktor`:'Temperatur-Faktor (keine Wetterdaten)','× '+shown.gate.toFixed(2).replace('.',',')]].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')+
-    `<tr class="total"><td>Beißindex</td><td>${blocked(t)?'⛔ '+blocked(t):shown.total}</td></tr>`;
   {
-    const sp=SP(),pc=v=>Math.round(v*100)+' %',sg=v=>v>0?'+'+v:v<0?'−'+Math.abs(v):'0';
-    $('iTitle').textContent='So entsteht der Wert: '+sp.name;
-    $('iWhen').textContent=`${label}, ${state.place}. Rechnung: ${shown.raw} Punkte × ${shown.gate.toFixed(2).replace('.',',')} = ${shown.total}.`;
-    $('iGate').textContent=!shown.W?'Ohne Wetterdaten fehlt die Wassertemperatur, der Faktor bleibt bei × 1.'
-      :shown.gate>=0.99?`Die Wassertemperatur liegt im Wohlfühlbereich von ${sp.name}, deshalb wird nichts gedämpft.`
-      :`Die Wassertemperatur liegt außerhalb des Wohlfühlbereichs von ${sp.name}, deshalb wird die Zwischensumme mit ${shown.gate.toFixed(2).replace('.',',')} multipliziert.`;
-    $('iProfTitle').textContent='Profil '+sp.name;
-    const MN=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-    $('iProfile').innerHTML=[
-      ['Wassertemperatur',`aktiv ab ${sp.t[0]} °C, optimal ${sp.t[1]}–${sp.t[2]} °C, aktiv bis ${sp.t[3]} °C`],
-      ['Aktivität',`Dämmerung ${pc(sp.act.dusk)}, Tag ${pc(sp.act.day)}, Nacht ${pc(sp.act.night)}`],
-      ['Himmel tagsüber',`bedeckt ${sg(sp.sky.over)}, sonnig ${sg(sp.sky.sun)}`],
-      ['Mondphase',sp.moon==='aal'?'Neumond +10, Vollmond −5':(sp.moon?`Neu-/Vollmond bis +${sp.moon}`:'kein Einfluss')],
-      ...(sp.season?[['Hauptsaison',sp.season.map(m=>MN[m-1]).join(', ')]]:[]),
-      ...(ruleFor(state.species,t)?[['Schonzeit / Maß',esc(ruleText(ruleFor(state.species,t)))+' <small>Quelle: '+esc(ruleFor(state.species,t).src)+', ohne Gewähr</small>']]:[]),
-      ['Hinweis',esc(sp.info)]
-    ].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('');
+    // Einfache Erklärung ohne Punkte und Gewichte
+    const p=shown.parts,sp=SP(),pos=[],neu=[],neg=[];
+    const put=(v,good,mid,bad,th=1)=>{if(v>=th)pos.push(good);else if(v<=-th)neg.push(bad);else if(mid)neu.push(mid);};
+    put(p.dusk>=24?1:p.dusk>=12?0:-1,`Tageszeit: ${shown.timeLabel}, gute Zeit für ${sp.name}`,`Tageszeit: ${shown.timeLabel}, mittlere Aktivität`,`Tageszeit: ${shown.timeLabel}, ${sp.name} ist jetzt wenig aktiv`);
+    if(shown.W)put(shown.gate>=0.99?1:shown.gate>=0.6?0:-1,'Wassertemperatur passt',`Wassertemperatur nicht ideal (${shown.tempLabel})`,`Wasser ${/kalt|kühl/.test(shown.tempLabel)?'zu kalt':'zu warm'} für ${sp.name}`);
+    if(p.phase>=3)pos.push(`Mond: ${phaseName(A.il.phase)}, günstige Phase`);else if(p.phase<0)neg.push(`Mond: ${phaseName(A.il.phase)}`);else neu.push(`Mond: ${phaseName(A.il.phase)}`);
+    if(p.major>2)pos.push('Mond steht hoch oder tief (Solunar-Hauptzeit)');
+    if(p.minor>1)pos.push('Mondauf- oder -untergang');
+    if(shown.W)put(p.pressure,`Luftdruck ${shown.prLabel}`,`Luftdruck ${shown.prLabel}`,`Luftdruck ${shown.prLabel}`);
+    if(shown.W)put(p.sky,'Himmel und Wind günstig',null,'Himmel oder Wind ungünstig');
+    if(p.busy<0)neg.push(`${shown.busy}: viel Angeldruck`);
+    if(p.season<0)neg.push('außerhalb der Hauptsaison');
+    const li=(a,c)=>a.map(t=>`<li class="${c}">${esc(t)}</li>`).join('');
+    $('iTitle').textContent='Was den Wert beeinflusst: '+sp.name;
+    $('iWhen').textContent=`${label}, ${state.place.replace(/^📍\s*/,'')}`;
+    $('factors').innerHTML=`<ul class="why">${li(pos,'p')}${li(neu,'n')}${li(neg,'m')}</ul>`;
   }
 }
 
@@ -1787,6 +1773,7 @@ function initMap(){
     const lat=+b.dataset.lat,lng=+b.dataset.lng,act=b.dataset.mapact;
     if(act==='place'){map.closePopup();Promise.all([waterAt(lat,lng),reverseName(lat,lng)]).then(([wa,rv])=>{const loc=(rv&&rv.name)||(lat.toFixed(3)+', '+lng.toFixed(3));setPlace(wa?wa.name+' · '+loc.split(',')[0]:loc,lat,lng,wa||{name:null,kind:''});});}
     else if(act==='catch'){map.closePopup();showTab('fang');if(fEl('fForm').hidden){endEdit();openForm();}fPos={lat,lng,src:'Karte'};showPos();schedulePreview();$('fMsg').textContent='Fangposition aus der Karte übernommen.';$('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});}
+    else if(act==='share'){shareCatch(b.dataset.id);}
     else if(act==='edit'){map.closePopup();showTab('fang');startEdit(b.dataset.id);}
   });
   setTimeout(()=>map.invalidateSize(),300);
@@ -1815,7 +1802,7 @@ function updateMapCatches(){
     const title=c.result==='fang'?c.species:(c.result==='biss'?'Biss ohne Fang':'Nullnummer')+' ('+c.species+')';
     L.circleMarker([c.lat,c.lng],{radius:7,color:'#fff',weight:2,fillColor:RES_COLOR[c.result]||'#8a9699',fillOpacity:.95})
       .bindPopup(`<b>${esc(title)}</b>${size?'<br>'+esc(size):''}<br>${new Date(c.t).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}${c.place?'<br>'+esc(c.place):''}${c.index!=null?'<br>Index '+c.index:''}${c.bait?'<br>'+esc(c.bait):''}
-        <button type="button" class="pbtn alt" data-mapact="edit" data-id="${c.id}">Bearbeiten</button>`)
+        <button type="button" class="pbtn" data-mapact="share" data-id="${c.id}">Teilen</button><button type="button" class="pbtn alt" data-mapact="edit" data-id="${c.id}">Bearbeiten</button>`)
       .addTo(catchLayer);
   });
 }
@@ -2060,7 +2047,7 @@ function renderCatches(){
       <div class="d">${c.index!=null?'Index '+(+c.index)+' · ':''}${esc(c.daytime)} · ${esc(c.moon)} ${c.illum!=null?(+c.illum)+' %':''}</div>
       <div class="d">${w}</div>
       ${c.bait||c.depth!=null||c.hours!=null||c.note?`<div class="d">${esc([c.bait,c.depth!=null?n1(c.depth)+' m Tiefe':'',c.hours!=null?n1(c.hours)+' Std. geangelt':'',c.note].filter(Boolean).join(' · '))}</div>`:''}
-      <div class="a">${map}<button type="button" data-edit="${esc(c.id)}">Bearbeiten</button><button type="button" data-del="${esc(c.id)}">${pendingDel===c.id?'Wirklich löschen?':'Löschen'}</button></div></li>`;
+      <div class="a">${map}<button type="button" data-share="${esc(c.id)}">Teilen</button><button type="button" data-photo="${esc(c.id)}">${c.photo?'Foto ändern':'Foto +'}</button><button type="button" data-edit="${esc(c.id)}">Bearbeiten</button><button type="button" data-del="${esc(c.id)}">${pendingDel===c.id?'Wirklich löschen?':'Löschen'}</button></div></li>`;
   }).join('')||'<li class="d">Keine Einträge für diesen Filter.</li>';
   fillThumbs();
   {let ev=list;if(community.length&&$('evalComm').checked){const fs=fEl('flSpecies').value,fr=fEl('flResult').value;ev=list.concat(communityOnly().filter(c=>(!fs||c.species===fs)&&(!fr||c.result===fr)));}renderEval(ev);}
@@ -2149,9 +2136,9 @@ function renderCalib(){
   let html=`<p class="note">${mine.length} eigene Einträge für ${esc(sp.name)}, davon ${mine.filter(e=>e.result==='fang').length} mit Fang und ${mine.filter(e=>e.hours!=null).length} mit Angeldauer.</p>`;
   if(c&&c.m){
     html+=`<label class="commtoggle"><input type="checkbox" id="calOn"${c.on?' checked':''}> Angepasste Gewichtung für ${esc(sp.name)} verwenden</label>`+
-      `<table class="factors"><tr><td><b>Baustein</b></td><td><b>Studie → angepasst</b></td></tr>`+
-      (c.act?ACT_KEYS.map(k=>{const o=sp.act[k],nv=c.act[k],arrow=nv>o+0.08?' ▲':nv<o-0.08?' ▼':'';return `<tr><td>${ACT_TXT[k]}</td><td>${Math.round(o*100)} % → ${Math.round(nv*100)} %${arrow}</td></tr>`;}).join(''):'')+
-      CAL_KEYS.map(k=>{const f=c.m[k],arrow=f>1.15?' ▲':f<0.87?' ▼':'';return `<tr><td>${CAL_TXT[k]}</td><td>${CAL_MAX[k]} → ${Math.round(CAL_MAX[k]*f)} Pkt.${arrow}</td></tr>`;}).join('')+`</table>`+
+      `<table class="factors"><tr><td><b>Einfluss</b></td><td><b>bei deinen Fängen</b></td></tr>`+
+      (c.act?ACT_KEYS.map(k=>{const o=sp.act[k],nv=c.act[k],arrow=nv>o+0.08?' ▲':nv<o-0.08?' ▼':'';return `<tr><td>${ACT_TXT[k]}</td><td>${arrow?(arrow.includes('▲')?'wichtiger ▲':'weniger wichtig ▼'):'unverändert'}</td></tr>`;}).join(''):'')+
+      CAL_KEYS.map(k=>{const f=c.m[k];return `<tr><td>${CAL_TXT[k]}</td><td>${f>1.15?'wichtiger ▲':f<0.87?'weniger wichtig ▼':'unverändert'}</td></tr>`;}).join('')+`</table>`+
       `<p class="note">Berechnet am ${new Date(c.date).toLocaleDateString('de-DE')} aus ${c.n} Einträgen (${c.nF} mit Fang, ${c.n0} ohne${c.nH<c.n?`, ${c.n-c.nH} ohne Angeldauer: dort werden 2 Std. angenommen`:''})${c.withComm?', inklusive Community-Fänge':''}.</p>`+
       (c.qStudy&&c.qCal?`<p class="note">Prüfung auf denselben Daten: Im oberen Drittel der Bewertung lag die Fangquote bei ${c.qStudy.hi} % (Studie) bzw. ${c.qCal.hi} % (angepasst), im unteren Drittel bei ${c.qStudy.lo} % bzw. ${c.qCal.lo} %. Je größer der Abstand, desto besser trennt die Gewichtung. Da auf denselben Daten geprüft wird, ist das Ergebnis etwas zu optimistisch.</p>`:'');
   }
@@ -2191,7 +2178,6 @@ $('wipeBtn').onclick=async()=>{
   try{if(window.caches){for(const k of await caches.keys())await caches.delete(k);}}catch(_){}
   location.reload();
 };
-$('moreInfo').onclick=()=>$('infoBtn').click();
 $('moreBook').onclick=()=>{showTab('fang');openSheet();};
 $('iClose').onclick=()=>{if(history.state&&history.state.sheet){history.back();}else{$('iSheet').hidden=true;document.body.classList.remove('sheet-open');}};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('iSheet').hidden)$('iClose').click();});
@@ -2256,7 +2242,41 @@ fEl('fNull').onclick=()=>{endEdit();openForm();fEl('fResult').value='null';fEl('
   setTimeout(()=>{fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});},40);};
 fEl('fNew').onclick=()=>{endEdit();openForm();syncResultUI();fEl('fMsg').textContent='';fEl('fangbuch').scrollIntoView({behavior:'smooth',block:'start'});};
 let pendingDel=null,pendingTimer=null;
+/* ---------- Teilen (Fang, Biss, Nullnummer, Ort) ---------- */
+const mapLink=(la,lo)=>`https://maps.google.com/?q=${(+la).toFixed(5)},${(+lo).toFixed(5)}`;
+async function shareIt(title,text,url,blob,fname){
+  try{
+    if(blob&&navigator.canShare){const file=new File([blob],fname||'fang.jpg',{type:blob.type||'image/jpeg'});
+      if(navigator.canShare({files:[file]})){await navigator.share({title,text:text+(url?'\n'+url:''),files:[file]});return;}}
+    if(navigator.share){await navigator.share({title,text,url});return;}
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  try{await navigator.clipboard.writeText(text+(url?'\n'+url:''));toast('In die Zwischenablage kopiert – jetzt in WhatsApp oder SMS einfügen.');}
+  catch(_){toast(text+(url?' '+url:''),false,9000);}
+}
+async function shareCatch(id){
+  const c=catches.find(x=>x.id===id);if(!c)return;
+  const size=[c.length!=null?n1(c.length)+' cm':'',c.weight!=null?n1(c.weight)+' kg':''].filter(Boolean).join(', ');
+  const what=c.result==='fang'?`🎣 ${c.species}${size?' '+size:''}`:c.result==='biss'?`🐟 Biss (${c.species})`:`➖ Nullnummer (${c.species})`;
+  const when=new Date(c.t).toLocaleString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const text=`${what}\n${when}${c.place?' · '+c.place:''}${c.bait?'\nKöder: '+c.bait:''}${c.wx?`\nWetter: ${n1(c.wx.tmp)} °C, ${Math.round(c.wx.p)} hPa ${c.wx.trend||''}`:''}${c.index!=null?'\nBeißindex: '+c.index:''}`;
+  const url=c.lat!=null&&isFinite(c.lat)?mapLink(c.lat,c.lng):'';
+  const blob=c.photo?await photoGet(c.id):null;
+  shareIt('Fang',text,url,blob,'fang-'+dstr(c.t)+'.jpg');
+}
+$('shareSpot').onclick=()=>{
+  const now=Date.now(),{ds,de,best}=A,isT=now>=ds&&now<de,t=selT!=null?selT:(isT?now:best.t),s=A.score(t),bl=blocked(t);
+  const wins=(A.wins||[]).map(x=>fmt(x.a)+'–'+fmt(x.b+10*6e4)).join(', ');
+  const text=`📍 ${state.place.replace(/^📍\s*/,'')}${state.waterName&&!state.place.includes(state.waterName)?' ('+state.waterName+')':''}\n${SP().name}: Beißindex ${bl?bl:s.total} ${bl?'':'('+VERB(s.total)+')'}, ${selT!=null||!isT?new Date(t).toLocaleString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'jetzt'}${wins?'\nBeste Zeiten: '+wins:''}`;
+  shareIt('Angelplatz',text,mapLink(state.lat,state.lng));
+};
+let quickPhotoId=null;
+$('quickPhoto').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';const id=quickPhotoId;quickPhotoId=null;if(!f||!id)return;
+  try{const b=await shrinkImage(f);await photoPut(id,b);thumbURLs.delete(id);const c=catches.find(x=>x.id===id);if(c){c.photo=true;saveCatches();}renderCatches();toast('Foto gespeichert.');}
+  catch(err){toast('Foto konnte nicht gespeichert werden: '+err.message,true);}};
 fEl('catchList').onclick=e=>{
+  {const b0=e.target.closest('button');
+   if(b0&&b0.dataset.share){shareCatch(b0.dataset.share);return;}
+   if(b0&&b0.dataset.photo){quickPhotoId=b0.dataset.photo;$('quickPhoto').click();return;}}
   const im=e.target.closest('img.thumb');
   if(im&&im.src){$('pImg').src=im.src;$('pSheet').hidden=false;try{history.pushState({sheet:3},'','#foto');}catch(_){}return;}
   const b=e.target.closest('button');if(!b)return;
