@@ -449,7 +449,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-15 (Hecht-Modell angepasst)</p>
+      <p class="note">Version 2026-10-15b (Angelkarten übersichtlich)</p>
     </div>
   </section>
 </main>
@@ -1227,10 +1227,19 @@ function fiaMatchPlace(name){
 }
 const FIA_SKIP=/^(id|nr|nummer|lfd.*|gml_?id|objectid|fid|geom|the_geom|shape.*|flaeche.*|area|bbox|uuid|link_?)$/i;
 function fiaProps(p){
-  return Object.entries(p).filter(([k,v])=>v!=null&&String(v).trim()!==''&&typeof v!=='object'&&!FIA_SKIP.test(k)).slice(0,8)
-    .map(([k,v])=>{const lbl=k.replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());const s=/ausgabe|stelle|verein/i.test(k)?fiaClean(v):String(v).trim();
-      const val=/^https?:\/\//.test(s)?`<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s)}</a>`:/^[\d\s()+\/-]{6,}$/.test(s)?`<a href="tel:${esc(s.replace(/[^\d+]/g,''))}">${esc(s)}</a>`:esc(s);
-      return `<div><span class="sub">${esc(lbl)}:</span> ${val}</div>`;}).join('');
+  // Felder des Fischereiamts zu einer sauberen Karte zusammenfassen
+  const g=re=>{const k=Object.keys(p).find(k=>re.test(k));return k&&p[k]!=null&&String(p[k]).trim()?String(p[k]).trim():'';};
+  const used=new Set();const pick=re=>{const k=Object.keys(p).find(k=>re.test(k)&&!used.has(k));if(!k)return '';used.add(k);const v=p[k];return v!=null&&String(v).trim()?String(v).trim():'';};
+  const name=pick(/^(name|gewaesser|gewässer|bezeichnung)$/i),stelle=fiaClean(pick(/ausgabe|stelle|verein/i));
+  const str=pick(/stra(ss|ß)e|adresse|anschrift/i),plz=pick(/^plz/i),ort=pick(/^ort$|^stadt$|plz_?ort/i);
+  const tel=pick(/^tel|telefon|phone/i),mail=pick(/mail/i),web=pick(/www|internet|url|web|link/i),info=pick(/^ak_|angebot|leistung|hinweis|bemerkung/i);
+  const row=(l,v)=>v?`<div><span class="sub">${l}:</span> ${v}</div>`:'';
+  const addr=[str,[plz,ort].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return row('Gewässer',esc(name))+row('Ausgabestelle',esc(stelle))+row('Adresse',esc(addr))+
+    row('Telefon',tel?`<a href="tel:${esc(tel.replace(/[^\d+]/g,''))}">${esc(tel)}</a>`:'')+
+    row('E-Mail',mail?`<a href="mailto:${esc(mail)}">${esc(mail)}</a>`:'')+
+    row('Web',web?`<a href="${esc(/^https?:/.test(web)?web:'https://'+web)}" target="_blank" rel="noopener">${esc(web)}</a>`:'')+
+    row('Angebot',esc(info));
 }
 function fiaHTML(){
   if(!inBerlinBox(state.lat,state.lng))return '';
@@ -1238,9 +1247,11 @@ function fiaHTML(){
   if(!fia.hits.length)return state.region&&state.region!=='Berlin'?'':'<div class="fia sub">Für diesen Punkt hat das Fischereiamt Berlin kein Angelgewässer verzeichnet. Liegt der Punkt am Ufer, auf der Karte direkt aufs Wasser tippen.</div>';
   const h0=fia.hits[0];
   const head={verboten:'⛔ Angeln verboten (laut Fischereiamt Berlin)',eigentuemer:'🔒 Angeln nur den Eigentümern erlaubt',karte:'🎫 Angelkarte laut Fischereiamt Berlin',unbekannt:'❔ Ausgabestelle der Angelkarten ist dem Fischereiamt nicht bekannt'}[h0.kind];
-  const more=fia.hits.filter(x=>x.kind===h0.kind).slice(0,2);
+  const sig=x=>JSON.stringify(Object.entries(x.props).filter(([k])=>!FIA_SKIP.test(k)).map(([k,v])=>String(v).trim()).sort());
+  const seen=new Set(),more=fia.hits.filter(x=>x.kind===h0.kind&&!seen.has(sig(x))&&seen.add(sig(x))).slice(0,2);
   const addr=x=>{const k=Object.keys(x.props).find(k=>/ausgabe|stelle/i.test(k));const pl=k?fiaMatchPlace(x.props[k]):null;if(!pl)return '';
     const rows=Object.entries(pl).filter(([k,v])=>v!=null&&String(v).trim()&&typeof v!=='object'&&!FIA_SKIP.test(k)&&!/^name$|ausgabe/i.test(k)).slice(0,6);
+    if(Object.keys(x.props).some(k=>/stra(ss|ß)e|adresse|^tel|telefon/i.test(k)))return '';   // Adresse steht schon beim Gewässer
     return rows.length?`<div class="fiaaddr">${fiaProps(Object.fromEntries(rows))}</div>`:'';};
   return `<div class="fia ${h0.kind}"><div class="fh">${head}</div>${more.map(x=>fiaProps(x.props)+addr(x)).join('<hr>')}<div class="sub" style="margin-top:6px">Quelle: Fischereiamt Berlin, Geoportal Berlin (Datenlizenz Deutschland – Zero 2.0). Abschnittsgrenzen beachten.</div></div>`;
 }
