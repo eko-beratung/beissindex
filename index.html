@@ -459,7 +459,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-17b (mit Befischungsdaten)</p>
+      <p class="note">Version 2026-10-17c</p>
     </div>
   </section>
 </main>
@@ -764,7 +764,7 @@ const DANGER=[
   {test:s=>s.family==='Plotosidae',txt:'Giftige Stacheln (Korallenwels). Vorsichtig anfassen.'}
 ];
 let gbifSp={};try{gbifSp=JSON.parse(localStorage.getItem('beissindex:gbifsp')||'{}');}catch(_){gbifSp={};}
-let gbifAll={};try{gbifAll=JSON.parse(localStorage.getItem('beissindex:gbifall')||'{}');}catch(_){gbifAll={};}
+let gbifAll={};try{gbifAll=JSON.parse(localStorage.getItem('beissindex:gbifall2')||'{}');}catch(_){gbifAll={};}
 let gbifClass=null;try{gbifClass=+localStorage.getItem('beissindex:gbifclass')||null;}catch(_){}
 let onGbifPartial=key=>{if(key===G2(state.lat)+','+G2(state.lng)||key===waterGbifKey()){speciesChips();fillSpeciesSelect();render();}};
 function registerDynamic(){
@@ -810,7 +810,7 @@ async function loadGBIFAll(lat,lng,sea,opt){
     const counts={};for(const x of list){const s=KEYSCI[x.k]||(gbifSp[x.k]&&gbifSp[x.k].sci);if(s)counts[s]=(counts[s]||0)+x.c;}
     const res={t:Date.now(),list,counts,mon:monSci(),km,total:j.count||0};gbifAll[key]=res;
     const ks=Object.keys(gbifAll);if(ks.length>30)delete gbifAll[ks[0]];
-    try{localStorage.setItem('beissindex:gbifall',JSON.stringify(gbifAll));}catch(_){}
+    try{localStorage.setItem('beissindex:gbifall2',JSON.stringify(gbifAll));}catch(_){}
     return res;
   }catch(_){return null;}
 }
@@ -844,9 +844,13 @@ function speciesLists(){
   const pool=sea?MARINE:FRESH;
   // Mindestens 10 Nachweise und ein spürbarer Anteil an allen Fischnachweisen der Umgebung.
   // Besatzfische (Regenbogenforelle) brauchen außerhalb des Berglands einen deutlich höheren Anteil, damit Forellenteiche nicht mitzählen.
-  const tot=g.total||0,STOCKED=new Set(['regenbogenforelle']);
-  const M=g.mon||{},mc=k=>M[SCI[k]]||0;
-  const ok=k=>{if(mc(k)>=1&&(inWater||mc(k)>=2))return true;const c=g.counts[SCI[k]]||0;if(c<(inWater?3:10))return false;if(!tot)return true;const sh=c/tot;return STOCKED.has(k)&&WTYPE()!=='bergland'?sh>=0.02:sh>=0.003;};
+  const tot=g.total||0;
+  const M=g.mon||{},mc=k=>M[SCI[k]]||0,STOCKED=new Set(['regenbogenforelle']);
+  const monTot=Object.values(M).reduce((a,b)=>a+b,0);
+  const ok=k=>{
+    // Besatzfische wie die Regenbogenforelle nur im Bergland oder wenn sie bei Befischungen einen nennenswerten Anteil hatten
+    if(STOCKED.has(k)&&WTYPE()!=='bergland')return monTot>0&&mc(k)/monTot>=0.05;
+    if(mc(k)>=1&&(inWater||mc(k)>=2))return true;const c=g.counts[SCI[k]]||0;if(c<(inWater?3:10))return false;if(!tot)return true;const sh=c/tot;return STOCKED.has(k)&&WTYPE()!=='bergland'?sh>=0.02:sh>=0.003;};
   const found=pool.filter(ok).sort((a,b)=>((mc(b)>0)-(mc(a)>0))||((g.counts[SCI[b]]||0)-(g.counts[SCI[a]]||0)));
   if(found.length<3)return {big:W.big,bait:W.bait,banned:W.banned,extra,src:'typisch'};
   const big=found.filter(k=>!BAIT.has(k)),bait=found.filter(k=>BAIT.has(k));
