@@ -1,5 +1,7 @@
 // Beißindex Service Worker: App offline verfügbar, Updates kommen über das Netz zuerst.
-const CACHE = 'beissindex-v2';
+const CACHE = 'beissindex-v3';
+const TILES = 'beissindex-tiles';
+const TILE_MAX = 400;   // nur angesehene Kacheln, mit Obergrenze (OSM-Nutzungsregeln)
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png', './leaflet.js', './leaflet.css', './datenschutz.html'];
 const EXTERNAL = [];
 
@@ -13,7 +15,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+    for (const k of await caches.keys()) if (k !== CACHE && k !== TILES) await caches.delete(k);
     await self.clients.claim();
   })());
 });
@@ -22,7 +24,26 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // Wetter, Ortssuche und Kartenkacheln immer live, nie aus dem Cache
+  // Kartenkacheln: erst Netz, im Funkloch aus dem Zwischenspeicher
+  if (/(^|\.)tile\.openstreetmap\.org$/.test(url.hostname)) {
+    e.respondWith((async () => {
+      const c = await caches.open(TILES);
+      try {
+        const res = await fetch(req);
+        if (res && res.ok) {
+          c.put(req, res.clone()).then(async () => {
+            const keys = await c.keys();
+            for (let i = 0; i < keys.length - TILE_MAX; i++) await c.delete(keys[i]);
+          }).catch(() => {});
+        }
+        return res;
+      } catch (_) {
+        return (await c.match(req)) || Response.error();
+      }
+    })());
+    return;
+  }
+  // Wetter, Ortssuche und übrige Dienste immer live, nie aus dem Cache
   if (url.origin !== location.origin) return;
 
   // Seite selbst: zuerst Netz (damit Updates sofort ankommen), offline aus dem Cache

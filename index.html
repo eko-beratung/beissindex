@@ -90,6 +90,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .bhours button{height:22px;border:0;border-radius:4px;padding:0;cursor:pointer}
 .bhours .l0{background:#2fbf75}.bhours .l1{background:#f0a83a}.bhours .l2{background:#ff5a45}.bhours .lx{background:var(--chip)}
 .bhours button.sel{outline:2px solid #fff;outline-offset:1px}
+.bsum{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;font-size:.95rem}.bsum li{padding:6px 10px;border-radius:10px;background:var(--bg2)}
+.bsum .l0{border-left:4px solid #2fbf75}.bsum .l1{border-left:4px solid #f0a83a}.bsum .l2{border-left:4px solid #ff5a45}
 .bhlabels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:3px}
 .ov{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .ov li button{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 34% 2.6em;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;color:var(--ink);cursor:pointer;text-align:left}
@@ -134,9 +136,9 @@ details.card.more{padding:10px 16px}
 .ring-bg{fill:none;stroke:rgba(255,255,255,.07);stroke-width:12}
 .ring-fg{fill:none;stroke-width:12;stroke-linecap:round;transition:stroke-dasharray .8s cubic-bezier(.2,.8,.2,1)}
 .ring-ticks{fill:none;stroke:rgba(95,208,255,.45);stroke-width:2;stroke-dasharray:1 5}
-.ring .num{position:absolute;inset:0;display:grid;place-items:center;font-size:3.1rem;font-weight:800;letter-spacing:-.03em}
+.ring .num{position:absolute;inset:0;display:grid;place-items:center;font-size:2.6rem;font-weight:800;letter-spacing:-.03em}
 .gfoot{grid-column:1/-1;text-align:center;margin-top:6px}
-.verdict{font-size:1.15rem;font-weight:700}
+.verdict{font-size:1.4rem;font-weight:800}
 .gfoot .sub{font-size:.88rem}
 .infobtn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:.9rem;font-weight:700;color:var(--ink);background:var(--chip);border:0;border-radius:999px;padding:7px 14px;min-height:36px;cursor:pointer}
 
@@ -351,6 +353,7 @@ body.sheet-open{overflow:hidden}
       <ul class="bwhy" id="boatWhy"></ul>
       <div class="bhours" id="boatHours" aria-label="Einschätzung je Stunde"></div>
       <div class="bhlabels"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+      <ul class="bsum" id="boatSum" aria-live="polite"></ul>
       <p class="note">Orientierung aus Modelldaten, keine Sicherheitsfreigabe. Die Entscheidung liegt beim Bootsführer. Vor dem Auslaufen Sturm- und Gewitterwarnungen sowie den amtlichen Seewetterbericht prüfen und Rettungsweste tragen.</p>
     </div>
 
@@ -439,7 +442,7 @@ body.sheet-open{overflow:hidden}
   <section class="tab" id="tab-more" hidden>
     <div class="card">
       <div class="cardhead"><h2>Über den Beißindex</h2></div>
-      <p class="note">Der Index schätzt, wie aktiv eine Fischart zu einem Zeitpunkt ist: aus Tageszeit, Wassertemperatur, Mond, Wetter und Angeldruck. Er ist ein Planungswerkzeug, keine Garantie.</p>
+      <p class="note">Der Beißindex ist eine <b>lernende Schätzung</b>, wie aktiv eine Fischart gerade ist: aus Tageszeit, Wassertemperatur, Mond, Wetter und Angeldruck, geprüft an gemeldeten Fängen. Entscheidend ist die Stufe (gering, mäßig, gut, sehr hoch), nicht die genaue Zahl. Mit deinen eigenen Fängen und Nullnummern passt er sich deinen Gewässern an. Ein Planungswerkzeug, keine Garantie.</p>
       <div class="frow"><button type="button" class="btn ghost" id="moreBook">Fangbuch &amp; Sicherung</button></div>
     </div>
     <div class="card">
@@ -459,7 +462,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-17c</p>
+      <p class="note">Version 2026-10-18 (Feinschliff)</p>
     </div>
   </section>
 </main>
@@ -1181,7 +1184,7 @@ function renderWeek(){
     const [,c]=verdict(o.best.total),dd=new Date(o.ds);
     return `<li><button type="button" data-date="${o.date}"${o.date===state.date?' aria-current="date"':''} aria-label="${dd.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'})}, Bestwert ${o.bl?o.bl:o.best.total}">
       ${o.ds===today?'<span class="today"></span>':''}<span class="dn">${dd.getDate()}</span><span class="wd">${o.ds===today?'Heute':(o.extra||dd.getMonth()!==new Date(today).getMonth()?dd.toLocaleDateString('de-DE',{weekday:'short'})+' '+dd.toLocaleDateString('de-DE',{month:'short'}).replace('.',''):dd.toLocaleDateString('de-DE',{weekday:'short'}))}</span>
-      <span class="sc" style="color:${o.bl?'var(--bad)':c}">${o.bl?'🔒':o.best.total}</span></button></li>`;}).join('');
+      <span class="sc" style="color:${o.bl?'var(--bad)':c}">${o.bl?'🔒':IX(o.best.total)}</span></button></li>`;}).join('');
   const cur=$('week').querySelector('[aria-current]');if(cur&&cur.scrollIntoView)try{cur.scrollIntoView({inline:'center',block:'nearest'});}catch(_){}
   $('weekNote').textContent=`Bester Wert je Tag für ${SP().name}. Tippen zeigt den Tag im Detail.`+(anyWx?' Wetter fließt ein, soweit die Vorhersage reicht.':' Ohne Wetterdaten: nur Mond und Sonne.');
 }
@@ -1225,6 +1228,7 @@ function sunArcSVG(frac,up){
     <path d="M8 ${cy}H${W-8}" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
     ${up?`<circle cx="${sx}" cy="${sy}" r="13" fill="rgba(255,193,69,.18)"/><circle cx="${sx}" cy="${sy}" r="8" fill="#ffc145"/>`:`<text x="${cx}" y="${cy-18}" text-anchor="middle" font-size="12" fill="#8d9ab3">Sonne unter dem Horizont</text>`}</svg>`;
 }
+const IX=v=>v==null?v:Math.round(v/5)*5;   // Anzeige in 5er-Schritten: Stufe zählt, nicht die Einerstelle
 const VERB=s=>s>=65?'Sehr hohe Aktivität':s>=50?'Gute Aktivität':s>=35?'Mäßige Aktivität':'Geringe Aktivität';
 const WSRC={manual:'gemessen',pegel:'Pegel',est:'geschätzt',short:'geschätzt'};
 const DIR=d=>d==null?'':['N','NO','O','SO','S','SW','W','NW'][Math.round(((d%360)+360)%360/45)%8];
@@ -1266,6 +1270,7 @@ async function loadFIA(lat,lng){
   if(res.every(x=>x===null)){return null;}           // Dienst nicht erreichbar
   const all=res.flat().filter(Boolean),order=['verboten','eigentuemer','karte','unbekannt'];
   all.sort((a,b)=>order.indexOf(a.kind)-order.indexOf(b.kind));
+  if(G3(state.lat)+','+G3(state.lng)!==key)return null;   // inzwischen anderer Ort
   fia={hits:all,t:Date.now()};fiaKey=key;
   // Gewässername aus den amtlichen Daten übernehmen, falls OpenStreetMap keinen geliefert hat
   if(all.length&&!state.waterName){const p=all[0].props,k=Object.keys(p).find(k=>/gew(ae|ä)sser|^name$|bezeichnung/i.test(k)&&typeof p[k]==='string'&&p[k].trim());if(k){state.waterName=p[k].trim().slice(0,60);state.waterKind='';persist();}}
@@ -1376,6 +1381,13 @@ function renderBoat(shown,t){
   for(let k=0;k<24;k++){const tt=ds+k*36e5+30*6e4,W=wxAt(tt),r=W?boatAssess(W,tt):null;
     cells+=`<button type="button" class="${r?'l'+r.lv:'lx'}${Math.floor((t-ds)/36e5)===k?' sel':''}" data-bh="${tt}" aria-label="${k} Uhr: ${r?['vertretbar','Vorsicht','nicht rausfahren'][r.lv]:'keine Daten'}"></button>`;}
   $('boatHours').innerHTML=cells;
+  // Zusammenfassung in Worten: zusammenhängende Zeiträume gleicher Stufe mit Hauptgrund
+  const runs=[];
+  for(let k=0;k<24;k++){const tt=ds+k*36e5+30*6e4,W=wxAt(tt),r=W?boatAssess(W,tt):null;if(!r)continue;
+    const why=(r.why.find(w=>w.l===r.lv&&!w.info)||{}).txt||'';const reason=why.split(/[:–(]/)[0].replace(/\d.*$/,'').trim();
+    const last=runs[runs.length-1];if(last&&last.lv===r.lv&&last.to===k)last.to=k+1;else runs.push({lv:r.lv,from:k,to:k+1,reason});}
+  const LV=['Keine Bedenken','Vorsicht','Nicht rausfahren'];
+  $('boatSum').innerHTML=runs.length?runs.map(r=>`<li class="l${r.lv}"><b>${String(r.from).padStart(2,'0')}–${String(r.to).padStart(2,'0')} Uhr:</b> ${LV[r.lv]}${r.lv>0&&r.reason?' ('+esc(r.reason)+')':''}</li>`).join(''):'';
 }
 $('boatType').onchange=e=>{boatType=e.target.value;try{localStorage.setItem('beissindex:boat',boatType);}catch(_){}renderDetail();};
 $('boatHours').addEventListener('click',e=>{const b=e.target.closest('[data-bh]');if(!b)return;selT=Math.round(+b.dataset.bh/6e5)*6e5;renderDetail();renderSunMoon();});
@@ -1453,13 +1465,13 @@ function renderOverview(){
     return {k,v:bl?null:s.total,bl,best:best.total,bt:best.t,bait:BAIT.has(k)};
   }));
   // Zahlen an den Artenknöpfen
-  for(const r of rows){const el=document.querySelector(`.species [data-sc="${r.k}"]`);if(el){const [,c]=verdict(r.v||0);el.textContent=r.bl?'🔒':r.v;el.style.color=r.bl?'var(--bad)':c;}}
+  for(const r of rows){const el=document.querySelector(`.species [data-sc="${r.k}"]`);if(el){const [,c]=verdict(r.v||0);el.textContent=r.bl?'🔒':IX(r.v);el.style.color=r.bl?'var(--bad)':c;}}
   rows.sort((a,b)=>(b.v??-1)-(a.v??-1));
   const show=ovAll?rows:rows.slice(0,6);
   $('ovWhen').textContent=t!=null?(selT!=null||!isToday?'um '+fmt(t)+' Uhr':'jetzt'):'Tagesbestwert';
   $('ovList').innerHTML=show.map(r=>{const [,c]=verdict(r.v||0);
-    return `<li><button type="button" data-ov="${r.k}"${r.k===state.species?' aria-current="true"':''}><span class="nm">${esc(SPECIES[r.k].name)}<small>${r.bl?r.bl:'Bestwert '+r.best+' um '+fmt(r.bt)+(r.bait?' · Köderfisch':'')}</small></span>
-      <span class="bar"><i style="width:${r.bl?0:r.v}%;background:${c}"></i></span><span class="v" style="color:${r.bl?'var(--bad)':c}">${r.bl?'🔒':r.v}</span></button></li>`;}).join('');
+    return `<li><button type="button" data-ov="${r.k}"${r.k===state.species?' aria-current="true"':''}><span class="nm">${esc(SPECIES[r.k].name)}<small>${r.bl?r.bl:'Bestwert '+IX(r.best)+' um '+fmt(r.bt)+(r.bait?' · Köderfisch':'')}</small></span>
+      <span class="bar"><i style="width:${r.bl?0:r.v}%;background:${c}"></i></span><span class="v" style="color:${r.bl?'var(--bad)':c}">${r.bl?'🔒':IX(r.v)}</span></button></li>`;}).join('');
   $('ovMore').hidden=rows.length<=6;$('ovMore').textContent=ovAll?'Weniger anzeigen':`Alle ${rows.length} Arten anzeigen`;
 }
 $('ovList').addEventListener('click',e=>{const b=e.target.closest('[data-ov]');if(!b)return;state.species=b.dataset.ov;persist();speciesChips();fillSpeciesSelect();render();
@@ -1472,15 +1484,15 @@ function renderDetail(){
   const shown={t,...A.score(t)};
   const label=selT!=null?`${dayLabel(t)}, ${fmt(t)} Uhr`:(isToday?`Jetzt, ${fmt(t)} Uhr`:`${dayLabel(t)}, ${fmt(t)} Uhr (Tagesbestwert)`);
   let [vt,vc]=verdict(shown.total);
-  const bl=blocked(t);$('score').textContent=bl?'⛔':shown.total;$('score').style.color=bl?'var(--bad)':vc;$('verdict').textContent=bl||vt;
-  $('scoreSub').textContent=`${label}. Tageshöchstwert ${best.total} um ${fmt(best.t)} Uhr.`;
+  const bl=blocked(t);$('score').textContent=bl?'⛔':IX(shown.total);$('score').style.color=bl?'var(--bad)':vc;$('verdict').textContent=bl||vt;
+  $('scoreSub').textContent=`${label}. Tageshöchstwert ${IX(best.total)} um ${fmt(best.t)} Uhr. Schätzwert, entscheidend ist die Stufe.`;
   {const bar=$('dateBar'),past=de<=now,kind=isToday?'today':past?'past':'future';
    bar.hidden=isToday&&selT==null;bar.className='datebar '+kind;
    $('dateBarText').textContent=(kind==='today'?'Heute, ':kind==='past'?'Rückblick: ':'Vorhersage: ')+new Date(isToday?t:ds+12*36e5).toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+(selT!=null?', '+fmt(t)+' Uhr':'');}
   const g=$('cursor');
   if(g&&selT!=null){g.style.display='';$('cl').setAttribute('x1',X(t));$('cl').setAttribute('x2',X(t));$('cc').setAttribute('cx',X(t));$('cc').setAttribute('cy',Y(shown.total));}
   else if(g)g.style.display='none';
-  $('readout').textContent=selT!=null?`Gewählt: ${fmt(t)} Uhr, Index ${bl?bl:shown.total}. Ring, Wetter und Sonne zeigen jetzt diese Uhrzeit. „Jetzt“ springt zurück.`:'Tippe oder wische in der Kurve, um einen Zeitpunkt zu wählen.';
+  $('readout').textContent=selT!=null?`Gewählt: ${fmt(t)} Uhr, Index ${bl?bl:IX(shown.total)} (${VERB(shown.total)}). Ring, Wetter und Sonne zeigen jetzt diese Uhrzeit. „Jetzt“ springt zurück.`:'Tippe oder wische in der Kurve, um einen Zeitpunkt zu wählen.';
   renderCards(shown,t,isToday,bl);
   const W=shown.W;
   $('wxTitle').textContent=isToday&&selT==null?'Wetter jetzt':'Wetter um '+fmt(t)+' Uhr';
@@ -1758,9 +1770,11 @@ async function locateMe(){
   if(!navigator.geolocation){toast('Standortabfrage wird auf diesem Gerät nicht unterstützt.',true);return;}
   locating=true;$('geoTop').classList.add('busy');toast('Standort wird ermittelt …',false,0);msg.textContent='Standort wird ermittelt …';
   try{
+    const k0=wxKey();
     const p=await getPosition();
     const lat=p.coords.latitude,lng=p.coords.longitude,acc=Math.round(p.coords.accuracy||0);
     const [rv,wa]=await Promise.all([reverseName(lat,lng),waterAt(lat,lng)]);
+    if(wxKey()!==k0){toast('Standort wurde inzwischen von Hand gewählt, GPS-Ergebnis verworfen.');return;}
     const local=(rv&&rv.name)||`${lat.toFixed(3)}, ${lng.toFixed(3)}`;
     const name='📍 '+(wa?wa.name+' · '+local.split(',')[0]:local);
     await setPlace(name,lat,lng,wa||{name:null,kind:''});
@@ -1842,7 +1856,7 @@ const RES_COLOR={fang:'#2f9e5a',biss:'#e0a020',null:'#8a9699'};
 function initMap(){
   if(typeof L==='undefined'){$('mapNote').textContent='Karte konnte nicht geladen werden (keine Internetverbindung?). Beim nächsten Öffnen mit Netz erscheint sie.';$('map').style.display='none';$('mapFit').hidden=true;return;}
   map=L.map('map',{zoomControl:true,attributionControl:true}).setView([state.lat,state.lng],12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,crossOrigin:'',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
   catchLayer=L.layerGroup().addTo(map);
   map.on('click',e=>{
     if(pickMode==='place'){const {lat,lng}=e.latlng;endPick();showTab('prog');toast('Standort wird gesetzt …',false,0);
@@ -1874,7 +1888,7 @@ function updateMini(){
   const ll=[state.lat,state.lng];
   if(!mini){
     mini=L.map('miniMap',{zoomControl:false,attributionControl:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,tap:false}).setView(ll,13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(mini);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,crossOrigin:'',attribution:'&copy; OpenStreetMap'}).addTo(mini);
     miniCatch=L.layerGroup().addTo(mini);
     mini.on('click',()=>{showTab('map');setTimeout(()=>{if(map)map.setView([state.lat,state.lng],14);},150);});
   }
@@ -1957,10 +1971,11 @@ $('fPhoto').onchange=async e=>{const f=e.target.files&&e.target.files[0];e.targe
   try{formPhoto=await shrinkImage(f);formPhotoRemoved=false;showFormPhoto(formPhoto);}catch(err){$('fMsg').textContent=err.message;}};
 $('fPhotoDel').onclick=()=>{formPhoto=null;formPhotoRemoved=true;showFormPhoto(null);};
 const thumbURLs=new Map();
+function trimThumbs(){while(thumbURLs.size>60){const [k,u]=thumbURLs.entries().next().value;try{URL.revokeObjectURL(u);}catch(_){}thumbURLs.delete(k);}}
 async function fillThumbs(){
   for(const img of document.querySelectorAll('#catchList img.thumb[data-pid]')){
     const id=img.dataset.pid;let u=thumbURLs.get(id);
-    if(!u){const b=await photoGet(id);if(!b)continue;u=URL.createObjectURL(b);thumbURLs.set(id,u);}
+    if(!u){const b=await photoGet(id);if(!b)continue;u=URL.createObjectURL(b);thumbURLs.set(id,u);trimThumbs();}
     img.src=u;img.hidden=false;
   }
 }
@@ -2237,6 +2252,7 @@ function runCalib(sk,withComm){
   if(rows.length<30||nF<5||n0<5)return {err:`Zu wenig Daten für ${SPECIES[sk].name}: ${rows.length} verwertbare Einträge (${nF} mit Fang, ${n0} ohne). Nötig sind mindestens 30, davon je 5 mit und ohne Fang. Einträge brauchen eine Position.`};
   for(const r of rows){r.act=SPECIES[sk].act;for(const k of CAL_KEYS)if(r.x[k]==null)r.x[k]=0;}
   const fit=fitCalib(rows,SPECIES[sk]);
+  featCache.clear();
   return {on:true,m:fit.m,act:fit.act,n:rows.length,nF,n0,nH,withComm:!!withComm,date:Date.now(),qStudy:quality(rows,null),qCal:quality(rows,fit)};
 }
 function renderCalib(){
@@ -2297,7 +2313,7 @@ fEl('flSpecies').onchange=fEl('flResult').onchange=()=>{listLimit=30;renderCatch
 fEl('fMore').onclick=()=>{listLimit+=30;renderCatches();};
 function openForm(){fEl('fForm').hidden=false;fEl('fNew').hidden=true;schedulePreview();}
 /* ---------- Wetter zum Fangzeitpunkt: automatisch beim Eintragen ---------- */
-const prevCache=new Map();
+const prevCache=new Map();   // höchstens 6 Einträge, siehe wxDataFor
 const inData=(D,key,t)=>D&&D.key===key&&D.t&&D.t.length>3&&t>=D.t[3]&&t<=D.t[D.t.length-1];
 async function wxDataFor(lat,lng,t){
   const key=(+lat).toFixed(3)+','+(+lng).toFixed(3);
@@ -2569,15 +2585,16 @@ loadCommunity();
 if(!isSea())loadPegel(false).then(render);
 backfillWeather();
 loadFIA(state.lat,state.lng).then(renderWaterInfo);
-if(!state.city)reverseName(state.lat,state.lng).then(rv=>{if(rv){state.city=rv.city||'';if(rv.state&&!state.region){state.region=rv.state;state.country=rv.cc||'';state.countryName=rv.country||'';}persist();render();}});
+if(!state.city){const k0=wxKey();reverseName(state.lat,state.lng).then(rv=>{if(rv&&wxKey()===k0){state.city=rv.city||'';if(rv.state&&!state.region){state.region=rv.state;state.country=rv.cc||'';state.countryName=rv.country||'';}persist();render();}});}
 setTimeout(updateMini,300);
 loadGBIFWater();
 loadGBIFAll(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,isSea()).then(g2=>{if(g2){speciesChips();fillSpeciesSelect();render();}});});
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
   if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
   try{localStorage.setItem('beissindex:waterKey',k);}catch(_){}
+  if(wxKey()!==k)return;
   if(wt!==state.waterAuto){state.waterAuto=wt;persist();speciesChips();fillSpeciesSelect();render();if(isSea())loadWeather(true).then(render);}
-  const rg=await detectRegion(state.lat,state.lng);if(rg){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();render();}})();
+  const rg=await detectRegion(state.lat,state.lng);if(rg&&wxKey()===k){state.region=rg.region;state.country=rg.cc;state.countryName=rg.country;persist();render();}})();
 setInterval(async()=>{if(!datePicked&&state.date!==todayStr()){goNow();return;}if(state.date===todayStr()){await loadWeather(false);render();}},5*60*1000);
 </script>
 </body>
