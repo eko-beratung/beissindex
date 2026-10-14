@@ -1,0 +1,189 @@
+﻿Datum;Stunde;Ergebnis;Fischart;Gewicht kg;Länge cm;Gewässer;Breite;Länge;Köder;Tiefe m;Angeldauer h;Beißindex;Tageszeit;Mondphase;Luftdruck hPa;Drucktendenz;Wassertemperatur °C;Lufttemperatur °C;Wind km/h;Wolken %;Quelle
+2021-06-02;06;fang;Zander;;75;Tegeler See;52.59;13.26;Gummifisch;;;;;;1019,2;leicht steigend;;10,2;12,5;47;öffentliche Fangmeldung
+2021-06-02;21;fang;Zander;;78;Tegeler See;52.59;13.26;Streamer;;;;;;1021,3;leicht steigend;;18,1;8,4;15;öffentliche Fangmeldung
+2021-06-03;12;fang;Zander;;70;Tegeler See;52.59;13.26;Gummifisch;;;;;;1024,1;stabil;;23,4;16,8;25;öffentliche Fangmeldung
+2021-06-07;06;fang;Zander;;62;Tegeler See;52.59;13.26;Gummifisch;;;;;;1021;stabil;;13,4;7,7;13;öffentliche Fangmeldung
+2021-08-02;20;fang;Zander;;87;Tegeler See;52.59;13.26;Gummifisch;;;;;;1012;leicht steigend;;18,5;11,6;61;öffentliche Fangmeldung
+2021-08-06;19;fang;Zander;;75;Tegeler See;52.59;13.26;Wobbler;;;;;;1005,2;stabil;;20;9,8;98;öffentliche Fangmeldung
+2021-12-01;04;fang;Zander;;96;Tegeler See;52.59;13.26;Fischfetzen;;;;;;1002,6;leicht fallend;;1,8;7;100;öffentliche Fangmeldung
+2022-06-09;03;fang;Zander;;69;Tegeler See;52.59;13.26;Drop-Shot Rig;;;;;;1006,7;stabil;;17,2;9,8;100;öffentliche Fangmeldung
+2023-05-07;19;fang;Zander;;65;Tegeler See;52.59;13.26;Minnow;;;;;;1024,2;stabil;;13,9;14,8;0;öffentliche Fangmeldung
+2023-11-05;14;fang;Hecht;;75;Tegeler See;52.59;13.26;Gummifisch;;;;;;978,4;stabil;;10,9;19,6;100;öffentliche Fangmeldung
+2023-11-17;15;fang;Hecht;;98;Tegeler See;52.59;13.26;Gummifisch;;;;;;1015,3;leicht steigend;;5,7;22,3;100;öffentliche Fangmeldung
+2023-11-19;11;fang;Hecht;;101;Tegeler See;52.59;13.26;Köderfisch;;;;;;1006;leicht fallend;;7;13,3;95;öffentliche Fangmeldung
+2023-11-19;13;fang;Hecht;;83;Tegeler See;52.59;13.26;Köderfisch;;;;;;1005,4;leicht fallend;;11,2;21,2;42;öffentliche Fangmeldung
+2023-11-26;12;fang;Hecht;;102;Tegeler See;52.59;13.26;Köderfisch;;;;;;1013,1;stabil;;-0,3;11,3;26;öffentliche Fangmeldung
+2023-12-16;14;fang;Hecht;;63;Tegeler See;52.59;13.26;Gummifisch;;;;;;1034,6;leicht fallend;;6,5;16,4;100;öffentliche Fangmeldung
+2023-12-30;15;fang;Hecht;;98;Tegeler See;52.59;13.26;Crankbait;;;;;;1011,4;stabil;;7,3;19,8;95;öffentliche Fangmeldung
+2024-05-01;17;fang;Hecht;;82;Tegeler See;52.59;13.26;Gummifisch;;;;;;1009;leicht fallend;;24,4;22,6;45;öffentliche Fangmeldung
+2024-05-01;19;fang;Hecht;;85;Tegeler See;52.59;13.26;Jerkbait;;;;;;1008,2;leicht fallend;;22,6;20;81;öffentliche Fangmeldung
+2024-05-01;19;fang;Hecht;;56;Tegeler See;52.59;13.26;Gummifisch;;;;;;1008,2;leicht fallend;;22,6;20;81;öffentliche Fangmeldung
+2024-05-02;10;fang;Hecht;;94;Tegeler See;52.59;13.26;Popper;;;;;;1006;leicht fallend;;20,2;19,9;10;öffentliche Fangmeldung
+2024-05-02;19;fang;Hecht;;55;Tegeler See;52.59;13.26;Jerkbait;;;;;;1003,4;stabil;;21,9;20,5;18;öffentliche Fangmeldung
+2024-05-03;05;fang;Zander;;84;Tegeler See;52.59;13.26;Jerkbait;;;;;;1005,6;stabil;;14,9;15;0;öffentliche Fangmeldung
+2024-05-03;19;fang;Hecht;;93;Tegeler See;52.59;13.26;Makrelen- / Heringspaternoster;;;;;;1011,1;leicht steigend;;18,5;6,4;100;öffentliche Fangmeldung
+2024-05-04;09;fang;Hecht;;87;Tegeler See;52.59;13.26;Jerkbait;;;;;;1016,5;leicht steigend;;14,5;10,3;66;öffentliche Fangmeldung
+2024-05-05;14;fang;Hecht;;92;Tegeler See;52.59;13.26;Gummifisch;;;;;;1007,4;leicht fallend;;17,9;17,7;96;öffentliche Fangmeldung
+2024-05-10;14;fang;Hecht;;55;Tegeler See;52.59;13.26;Gummifisch;;;;;;1023,3;leicht fallend;;20,5;9,2;54;öffentliche Fangmeldung
+2024-05-16;20;fang;Hecht;;55;Tegeler See;52.59;13.26;Jerkbait;;;;;;1009,9;stabil;;22,2;21,5;100;öffentliche Fangmeldung
+2024-05-24;23;fang;Hecht;;54;Tegeler See;52.59;13.26;Gummifisch;;;;;;1017,7;stabil;;16,6;3,6;100;öffentliche Fangmeldung
+2024-05-29;07;fang;Hecht;;96;Tegeler See;52.59;13.26;Gummifisch;;;;;;1015,4;leicht fallend;;12,8;10;91;öffentliche Fangmeldung
+2024-06-02;18;fang;Hecht;;68;Tegeler See;52.59;13.26;Hegene;;;;;;1014,6;stabil;;21,2;19,2;99;öffentliche Fangmeldung
+2024-06-02;18;fang;Hecht;;65;Tegeler See;52.59;13.26;Nassfliege;;;;;;1014,6;stabil;;21,2;19,2;99;öffentliche Fangmeldung
+2024-06-02;18;fang;Hecht;;50;Tegeler See;52.59;13.26;Nymphe;;;;;;1014,6;stabil;;21,2;19,2;99;öffentliche Fangmeldung
+2024-06-04;15;fang;Hecht;;65;Tegeler See;52.59;13.26;Gummifisch;;;;;;1013,6;leicht fallend;;18,8;7,4;100;öffentliche Fangmeldung
+2024-06-04;15;fang;Hecht;;60;Tegeler See;52.59;13.26;Garnelenimitat;;;;;;1013,6;leicht fallend;;18,8;7,4;100;öffentliche Fangmeldung
+2024-06-06;16;fang;Hecht;;62;Tegeler See;52.59;13.26;Jig Spinner;;;;;;1016,6;leicht fallend;;18,9;14,7;77;öffentliche Fangmeldung
+2024-06-14;10;fang;Hecht;;111;Tegeler See;52.59;13.26;Crankbait;;;;;;1013,7;stabil;;16,1;12,9;100;öffentliche Fangmeldung
+2024-06-15;07;fang;Hecht;;82;Tegeler See;52.59;13.26;Gummifisch;;;;;;1005,7;leicht fallend;;15,3;14,8;95;öffentliche Fangmeldung
+2024-06-16;05;fang;Hecht;;107;Tegeler See;52.59;13.26;Gummifisch;;;;;;1010;stabil;;10,2;6,8;8;öffentliche Fangmeldung
+2024-06-16;20;fang;Hecht;;99;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1009,1;stabil;;20,5;7;69;öffentliche Fangmeldung
+2024-06-20;09;fang;Hecht;;92;Tegeler See;52.59;13.26;Gummifisch;;;;;;1023,6;stabil;;15,2;3,3;100;öffentliche Fangmeldung
+2024-06-23;16;fang;Hecht;;80;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1017,8;leicht steigend;;21,1;18,3;100;öffentliche Fangmeldung
+2024-06-26;10;fang;Hecht;;90;Tegeler See;52.59;13.26;Gummifisch;;;;;;1014,3;stabil;;23,9;14,2;0;öffentliche Fangmeldung
+2024-06-26;13;fang;Hecht;;70;Tegeler See;52.59;13.26;Gummifisch;;;;;;1013,4;leicht fallend;;27,4;15,7;0;öffentliche Fangmeldung
+2024-06-26;15;fang;Hecht;;86;Tegeler See;52.59;13.26;Gummifisch;;;;;;1012,7;leicht fallend;;28,7;12,5;52;öffentliche Fangmeldung
+2024-07-04;19;fang;Hecht;;100;Tegeler See;52.59;13.26;Chatterbait;;;;;;1006,1;leicht steigend;;16,8;13,4;16;öffentliche Fangmeldung
+2024-07-17;18;fang;Hecht;;86;Tegeler See;52.59;13.26;Chatterbait;;;;;;1019,5;stabil;;22,9;16,9;89;öffentliche Fangmeldung
+2024-07-19;16;fang;Hecht;;70;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1019,8;leicht fallend;;27,5;7,6;67;öffentliche Fangmeldung
+2024-08-14;18;fang;Hecht;;98;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1010,3;stabil;;31,9;13,8;13;öffentliche Fangmeldung
+2024-08-17;17;fang;Hecht;;74;Tegeler See;52.59;13.26;Gummifisch;;;;;;1011;stabil;;25,7;4,6;56;öffentliche Fangmeldung
+2024-08-17;19;fang;Hecht;;115;Tegeler See;52.59;13.26;Gummifisch;;;;;;1010,9;stabil;;23,8;8,9;70;öffentliche Fangmeldung
+2024-08-29;19;fang;Hecht;;86;Tegeler See;52.59;13.26;Spinnerbait;;;;;;1015,6;stabil;;29;5,8;99;öffentliche Fangmeldung
+2024-09-04;06;fang;Hecht;;89;Tegeler See;52.59;13.26;Gummifisch;;;;;;1015,4;leicht steigend;;20;7,9;20;öffentliche Fangmeldung
+2024-09-06;18;fang;Hecht;;70;Tegeler See;52.59;13.26;Gummifisch;;;;;;1013,9;stabil;;27,6;12,3;10;öffentliche Fangmeldung
+2024-09-06;20;fang;Zander;;79;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1014,2;stabil;;25,2;12,7;2;öffentliche Fangmeldung
+2024-09-07;21;fang;Zander;;65;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1013,1;stabil;;25;12,7;79;öffentliche Fangmeldung
+2024-09-13;08;fang;Hecht;;64;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1017,3;leicht steigend;;10,6;9,4;100;öffentliche Fangmeldung
+2024-09-18;09;fang;Hecht;;70;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1029,5;leicht steigend;;16,7;10,2;4;öffentliche Fangmeldung
+2024-09-21;00;fang;Zander;;63;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1026,2;stabil;;14,5;14;8;öffentliche Fangmeldung
+2024-09-22;17;fang;Hecht;;60;Havel Spandau;52.53;13.20;Blinker / Spoons;;;;;;1014,7;leicht fallend;;23,3;9,4;16;öffentliche Fangmeldung
+2024-09-28;11;fang;Hecht;;83;Tegeler See;52.59;13.26;Sonstiges Imitat (Frosch, Krebs etc.);;;;;;1011,5;stark steigend;;13,9;22,8;7;öffentliche Fangmeldung
+2024-10-05;12;fang;Hecht;;75;Tegeler See;52.59;13.26;Gummifisch;;;;;;1019,9;leicht fallend;;13,6;13,6;23;öffentliche Fangmeldung
+2024-10-06;17;fang;Hecht;;83;Tegeler See;52.59;13.26;Sonstige Fliegen (Karpfenfliegen etc.);;;;;;1012,5;leicht fallend;;11,5;8,6;100;öffentliche Fangmeldung
+2024-10-11;09;fang;Hecht;;93;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1011,4;stark steigend;;8,5;11,4;54;öffentliche Fangmeldung
+2024-10-14;11;fang;Hecht;;70;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1017,9;stabil;;10,3;17,5;99;öffentliche Fangmeldung
+2024-10-14;21;fang;Zander;;85;Havel Spandau;52.53;13.20;Köderfisch;;;;;;1018,5;leicht steigend;;9,4;7,3;100;öffentliche Fangmeldung
+2024-10-16;13;fang;Zander;;64;Havel Spandau;52.53;13.20;Köderfisch;;;;;;1023,5;leicht fallend;;12,4;22;86;öffentliche Fangmeldung
+2024-10-19;09;fang;Hecht;;91;Tegeler See;52.59;13.26;Twister;;;;;;1017;leicht steigend;;11,6;14,8;49;öffentliche Fangmeldung
+2024-10-20;14;fang;Hecht;;98;Tegeler See;52.59;13.26;Gummifisch;;;;;;1022,3;leicht fallend;;16,1;8,2;97;öffentliche Fangmeldung
+2024-10-20;21;fang;Hecht;;80;Tegeler See;52.59;13.26;Sonstiger Kunstköder;;;;;;1021,1;stabil;;13,9;13,5;100;öffentliche Fangmeldung
+2024-10-21;01;fang;Zander;;63;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1021,4;stabil;;14,5;15;100;öffentliche Fangmeldung
+2024-10-24;16;fang;Hecht;;104;Tegeler See;52.59;13.26;Spinnerbait;;;;;;1028,9;stark fallend;;13,7;15,7;12;öffentliche Fangmeldung
+2024-10-27;02;fang;Hecht;;79;Havel Spandau;52.53;13.20;Sonstiges Imitat (Frosch, Krebs etc.);;;;;;1018,5;leicht fallend;;10,2;12,4;0;öffentliche Fangmeldung
+2024-11-21;00;fang;Hecht;;55;Tegeler See;52.59;13.26;Gummifisch;;;;;;996;stabil;;0,7;13,9;100;öffentliche Fangmeldung
+2024-11-23;12;fang;Hecht;;100;Tegeler See;52.59;13.26;Streamer;;;;;;1018,4;stark steigend;;3;20,3;100;öffentliche Fangmeldung
+2024-12-14;16;fang;Hecht;;95;Tegeler See;52.59;13.26;Gummifisch;;;;;;1014,1;leicht fallend;;1,2;15,7;100;öffentliche Fangmeldung
+2024-12-17;15;fang;Hecht;;80;Tegeler See;52.59;13.26;Gummifisch;;;;;;1024,1;stabil;;9,6;19,8;100;öffentliche Fangmeldung
+2024-12-17;20;fang;Hecht;;70;Tegeler See;52.59;13.26;Gummifisch;;;;;;1025;stabil;;8,3;16,6;100;öffentliche Fangmeldung
+2024-12-20;23;fang;Zander;;65;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1017,5;leicht steigend;;3,1;13,7;22;öffentliche Fangmeldung
+2024-12-21;18;fang;Zander;;80;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1010,2;leicht fallend;;6,4;17,8;100;öffentliche Fangmeldung
+2024-12-25;11;fang;Zander;;73;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1034,6;leicht steigend;;1,8;6,9;100;öffentliche Fangmeldung
+2024-12-26;10;fang;Zander;;80;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1038,1;leicht steigend;;5,3;5,2;100;öffentliche Fangmeldung
+2024-12-29;13;fang;Hecht;;70;Havel Spandau;52.53;13.20;Köderfisch;;;;;;1027,7;leicht steigend;;-0,9;14,6;100;öffentliche Fangmeldung
+2024-12-30;12;fang;Hecht;;55;Havel Spandau;52.53;13.20;Köderfisch;;;;;;1027;stabil;;3;18,9;100;öffentliche Fangmeldung
+2024-12-30;18;fang;Hecht;;93;Tegeler See;52.59;13.26;Tintenfischimitat;;;;;;1025,5;stabil;;3,5;19,8;100;öffentliche Fangmeldung
+2025-03-01;16;fang;Zander;;85;Havel Spandau;52.53;13.20;Wurm;;;;;;1031,3;stabil;;5,3;12,7;93;öffentliche Fangmeldung
+2025-05-01;10;fang;Hecht;;63;Tegeler See;52.59;13.26;Jerkbait;;;;;;1023,1;stabil;;18,9;3,7;0;öffentliche Fangmeldung
+2025-05-01;11;fang;Hecht;;82;Tegeler See;52.59;13.26;Spinner;;;;;;1022,8;stabil;;20,7;3,8;0;öffentliche Fangmeldung
+2025-05-01;11;fang;Hecht;;79;Tegeler See;52.59;13.26;Gummifisch;;;;;;1022,8;stabil;;20,7;3,8;0;öffentliche Fangmeldung
+2025-05-01;12;fang;Hecht;;74;Tegeler See;52.59;13.26;Spinner;;;;;;1022,4;leicht fallend;;22,2;3,6;2;öffentliche Fangmeldung
+2025-05-01;20;fang;Hecht;;64;Havel Spandau;52.53;13.20;Chatterbait;;;;;;1018,3;leicht fallend;;21,9;9,2;27;öffentliche Fangmeldung
+2025-05-03;07;fang;Hecht;;80;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1012,2;stabil;;10,5;7,3;8;öffentliche Fangmeldung
+2025-05-04;18;fang;Hecht;;73;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1010,3;stabil;;13,3;17,4;100;öffentliche Fangmeldung
+2025-05-06;11;fang;Hecht;;78;Tegeler See;52.59;13.26;Jerkbait;;;;;;1018,3;stabil;;11,8;7,8;0;öffentliche Fangmeldung
+2025-05-06;13;fang;Hecht;;65;Tegeler See;52.59;13.26;Jerkbait;;;;;;1017,7;leicht fallend;;13,9;9,8;0;öffentliche Fangmeldung
+2025-05-06;17;fang;Hecht;;64;Tegeler See;52.59;13.26;Gummifisch;;;;;;1016,9;stabil;;13;15,2;100;öffentliche Fangmeldung
+2025-05-06;18;fang;Hecht;;63;Tegeler See;52.59;13.26;Jerkbait;;;;;;1017,2;leicht steigend;;12,8;12,3;100;öffentliche Fangmeldung
+2025-05-09;22;fang;Hecht;;70;Havel Spandau;52.53;13.20;Jig Spinner;;;;;;1020,8;leicht steigend;;14,1;8;61;öffentliche Fangmeldung
+2025-05-19;13;fang;Hecht;;53;Tegeler See;52.59;13.26;Wobbler;;;;;;1017,7;stabil;;15,3;18;100;öffentliche Fangmeldung
+2025-05-28;14;fang;Hecht;;57;Havel Spandau;52.53;13.20;Chatterbait;;;;;;1009,3;stabil;;17,9;21,1;85;öffentliche Fangmeldung
+2025-06-01;01;fang;Zander;;82;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1016,4;leicht fallend;;17;10,8;0;öffentliche Fangmeldung
+2025-06-03;15;fang;Zander;;45;Tegeler See;52.59;13.26;Hegene;;;;;;1013,6;leicht fallend;;22,4;12,7;71;öffentliche Fangmeldung
+2025-06-07;01;fang;Zander;;88;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1011,3;stabil;;15,7;11,3;10;öffentliche Fangmeldung
+2025-06-07;21;fang;Hecht;;63;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1008,1;leicht steigend;;16,4;13,2;39;öffentliche Fangmeldung
+2025-06-14;01;fang;Zander;;82;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1025,4;stabil;;17,7;12,8;0;öffentliche Fangmeldung
+2025-07-04;20;fang;Hecht;;62;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1023;leicht fallend;;22;13,8;100;öffentliche Fangmeldung
+2025-07-06;08;fang;Hecht;;77;Havel Spandau;52.53;13.20;Jig Spinner;;;;;;1009,5;leicht fallend;;21,3;5,9;39;öffentliche Fangmeldung
+2025-07-13;20;fang;Hecht;;73;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1010,2;stabil;;20,4;6,4;31;öffentliche Fangmeldung
+2025-08-04;07;fang;Hecht;;70;Havel Spandau;52.53;13.20;Jig Spinner;;;;;;1014,7;stabil;;14,6;14,3;100;öffentliche Fangmeldung
+2025-08-04;09;fang;Hecht;;67;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1015;stabil;;15,2;15;100;öffentliche Fangmeldung
+2025-08-11;14;fang;Hecht;;85;Havel Spandau;52.53;13.20;Spinner;;;;;;1025,1;leicht fallend;;24,1;7;60;öffentliche Fangmeldung
+2025-08-11;17;fang;Hecht;;78;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1023,7;leicht fallend;;25;4,5;54;öffentliche Fangmeldung
+2025-10-11;12;fang;Hecht;;82;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1029,4;leicht steigend;;14,8;22,4;100;öffentliche Fangmeldung
+2025-10-11;17;fang;Zander;;50;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1028,7;stabil;;16,1;13;34;öffentliche Fangmeldung
+2025-10-19;12;fang;Zander;;62;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1023,2;leicht fallend;;7,4;9,3;100;öffentliche Fangmeldung
+2025-10-20;22;fang;Zander;;81;Havel Spandau;52.53;13.20;Wobbler;;;;;;1003,2;leicht fallend;;10,4;15,7;100;öffentliche Fangmeldung
+2025-11-01;17;fang;Zander;;77;Tegeler See;52.59;13.26;Wobbler;;;;;;;–;;;;;öffentliche Fangmeldung
+2025-11-07;06;fang;Zander;;81;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1012,4;stabil;;5,4;12;0;öffentliche Fangmeldung
+2025-11-07;10;fang;Hecht;;90;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1012,9;stabil;;6,1;11,6;0;öffentliche Fangmeldung
+2025-11-12;22;fang;Zander;;56;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1012,8;leicht fallend;;9,4;12,8;100;öffentliche Fangmeldung
+2025-12-20;17;fang;Zander;;45;Tegeler See;52.59;13.26;Gummifisch;;;;;;1019,9;stabil;;6;3,3;98;öffentliche Fangmeldung
+2025-12-24;17;fang;Zander;;45;Tegeler See;52.59;13.26;Gummifisch;;;;;;1036,7;leicht steigend;;-3,9;14,8;9;öffentliche Fangmeldung
+2026-05-01;12;fang;Hecht;;86;Havel Spandau;52.53;13.20;Spinner;;;;;;1029,5;stabil;;19,6;7,2;0;öffentliche Fangmeldung
+2026-05-01;16;fang;Zander;;80;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1027,2;leicht fallend;;22,9;5,5;0;öffentliche Fangmeldung
+2026-05-01;19;fang;Hecht;;77;Havel Spandau;52.53;13.20;Blinker;;;;;;1025,7;leicht fallend;;21,8;5;0;öffentliche Fangmeldung
+2026-05-03;15;fang;Hecht;;81;Havel Spandau;52.53;13.20;Wobbler;;;;;;1011,5;leicht fallend;;28,8;16,9;98;öffentliche Fangmeldung
+2026-05-03;16;fang;Hecht;;72;Havel Spandau;52.53;13.20;Chatterbait;;;;;;1011,1;leicht fallend;;28,3;15,4;100;öffentliche Fangmeldung
+2026-05-03;18;fang;Hecht;;67;Havel Spandau;52.53;13.20;Blinker;;;;;;1010,1;leicht fallend;;27,4;14,1;99;öffentliche Fangmeldung
+2026-05-06;10;fang;Hecht;;57;Havel Spandau;52.53;13.20;Jig Spinner;;;;;;1005,5;stabil;;10,4;9,8;100;öffentliche Fangmeldung
+2026-05-13;13;fang;Hecht;;55;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1000,8;leicht fallend;;11,3;19,2;52;öffentliche Fangmeldung
+2026-05-14;12;fang;Hecht;;65;Havel Spandau;52.53;13.20;Crankbait;;;;;;997,2;leicht steigend;;10,9;18,1;70;öffentliche Fangmeldung
+2026-05-16;22;fang;Zander;;71;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1011,2;stark steigend;;9,6;7,2;13;öffentliche Fangmeldung
+2026-05-17;12;fang;Hecht;;57;Havel Spandau;52.53;13.20;Blinker;;;;;;1015,4;stabil;;15,3;9,9;16;öffentliche Fangmeldung
+2026-05-25;14;fang;Hecht;;102;Havel Spandau;52.53;13.20;Gummifisch;;;;;;1032,2;leicht fallend;;24;7,2;0;öffentliche Fangmeldung
+2026-06-01;23;fang;Zander;;81;Havel Spandau;52.53;13.20;Wobbler;;;;;;1014,9;stabil;;17,8;8,6;98;öffentliche Fangmeldung
+2026-06-02;18;fang;Zander;;78;Havel Spandau;52.53;13.20;Jerkbait;;;;;;1006,2;stark fallend;;26,3;11,4;100;öffentliche Fangmeldung
+2026-06-19;09;fang;Zander;;87;Tegeler See;52.59;13.26;Gummifisch;;;;;;1017,7;stabil;;26,3;6,4;19;öffentliche Fangmeldung
+2026-07-25;17;fang;Hecht;;85;Havel Spandau;52.51;13.20;Köderfisch mit pose;;;26;Tag;Zunehmender Mond;;;;;;;eigene Fänge
+2026-08-02;18;fang;Hecht;;98;Havel Spandau;52.51;13.20;Köderfisch;;;17;Tag;Abnehmender Mond;1020;leicht fallend;23,3;23,9;5;3;eigene Fänge
+2026-08-23;14;fang;Hecht;;74;Havel Spandau;52.51;13.20;Gummifisch;;;41;Tag;Zunehmender Mond;1020,6;stabil;19,8;18,2;17;59;eigene Fänge
+2026-09-07;19;fang;Zander;;95;Mescheide;51.72;12.47;Gummifisch;;;72;Dämmerung;Abnehmende Sichel;1016,4;stark fallend;18,3;23,6;9;34;eigene Fänge
+2026-09-10;18;fang;Zander;;55;Bleilochtalsperre;50.52;11.70;Gummifisch;;;;;;1019,3;stabil;;15,4;4,3;47;öffentliche Fangmeldung
+2026-09-12;18;fang;Hecht;;87;Mescheide;51.72;12.47;Gummifisch;;;71;Dämmerung;Zunehmende Sichel;1021,3;leicht fallend;14,9;20;3;100;eigene Fänge
+2026-09-13;06;fang;Zander;;45;Havel Spandau;52.51;13.20;Gummifisch;;;65;Dämmerung;Zunehmende Sichel;1018,4;leicht fallend;16,3;15,8;7;100;eigene Fänge
+2026-09-14;13;fang;Hecht;;86;Havel Spandau;52.51;13.20;Gummifisch;;;69;Tag;Zunehmende Sichel;1024,1;stabil;16,4;16,9;11;88;eigene Fänge
+2026-09-18;20;fang;Zander;;70;Stößensee;52.51;13.21;Gummifisch;;;;;;1014,7;leicht steigend;;15,6;8,6;9;öffentliche Fangmeldung
+2026-09-22;13;fang;Hecht;;69;Saarbrücken;49.23;7.01;Gummifisch;;;58;Tag;Zunehmender Mond;1028,2;leicht fallend;16,2;19,2;5;41;eigene Fänge
+2026-09-23;00;fang;Zander;;80;Roßlau Elbe;51.89;12.24;;;;63;Nacht;Zunehmender Mond;1028,5;stabil;15,3;9,2;4;0;eigene Fänge
+2026-09-23;08;fang;Zander;;51;Roßlau Elbe;51.89;12.24;Spinnfischen;;;48;Tag;Zunehmender Mond;1027,3;stabil;15;7,1;2;0;eigene Fänge
+2026-09-26;23;fang;Hecht;;83;Hakenfelde;52.55;13.22;;;;40;Nacht;Vollmond;1025,1;leicht steigend;15,7;14,1;6;100;eigene Fänge
+2026-10-01;18;fang;Hecht;;87;Tegeler See;52.58;13.26;;;;80;Dämmerung;Abnehmender Mond;1023,1;stabil;16,1;22,6;8;100;eigene Fänge
+2026-10-02;07;fang;Hecht;;98;Tegeler See;52.58;13.26;Jig Spinner;;;63;Dämmerung;Abnehmender Mond;1027,9;leicht steigend;16,1;10,9;4;100;eigene Fänge
+2026-10-02;15;fang;Hecht;;60;Tegeler See;52.58;13.26;;;;57;Tag;Abnehmender Mond;1031,7;leicht steigend;16,1;16,5;7;99;eigene Fänge
+2026-10-03;11;fang;Hecht;;80;Saarbrücken;49.23;7.01;Kunstköder;;;48;Tag;Letztes Viertel;1029,9;stabil;17,2;16,4;6;0;eigene Fänge
+2026-10-03;23;fang;Zander;;76;Stößensee;52.51;13.21;Gummifisch;;;;;;1029,8;stabil;;13,9;1,8;39;öffentliche Fangmeldung
+2026-10-04;09;fang;Zander;;85;Roßlau Elbe;51.89;12.24;;;;45;Tag;Abnehmende Sichel;1029,7;stabil;15,6;11,5;4;100;eigene Fänge
+2026-10-04;18;fang;Hecht;;71;Tegeler See;52.58;13.26;Jerkbait;;;57;Dämmerung;Abnehmende Sichel;1026,9;stabil;15,9;16,1;5;19;eigene Fänge
+2026-10-04;19;fang;Hecht;;86;Mescheide;51.72;12.47;Jerbait;;;60;Dämmerung;Abnehmende Sichel;1027,5;leicht fallend;15,8;14,5;2;100;eigene Fänge
+2026-10-07;18;fang;Hecht;;100;Mescheide;51.72;12.47;Jerbait;;;71;Dämmerung;Abnehmende Sichel;1008,4;stark fallend;15,4;20,7;7;17;eigene Fänge
+2026-10-10;18;fang;Zander;;72;Rhein (Rees);51.76;6.40;Wobbler;;;;;;1009,5;stabil;;12,3;17,6;100;öffentliche Fangmeldung
+2026-10-10;19;fang;Hecht;;76;;52.54;13.21;;;;70;Dämmerung;Neumond;1007,1;stabil;14,6;13;12;100;eigene Fänge
+2026-10-10;23;fang;Zander;3,8;45;Spree;52.55;13.36;Gummifisch;;;59;Nacht;Neumond;1007,5;stabil;15,2;11,7;11;33;eigene Fänge
+2026-10-11;13;fang;Hecht;;67;Klein Rossau;52.79;11.64;Gummifisch;;;64;Tag;Zunehmende Sichel;1007,3;leicht steigend;13,9;12,2;26;100;eigene Fänge
+2026-10-11;13;fang;Zander;3,5;75;Schönbeck;53.58;13.57;Gummifisch;;;57;Tag;Zunehmende Sichel;1005,9;stabil;13,3;11;20;100;eigene Fänge
+2026-10-11;13;fang;Zander;;45;Saarbrücken;49.23;7.01;Pose mit Köder;;;59;Tag;Zunehmende Sichel;1015;stabil;15,3;13,5;16;83;eigene Fänge
+2026-10-11;16;fang;Hecht;;95;Mescheide;51.72;12.47;;;;63;Tag;Zunehmende Sichel;1009,4;stabil;14,3;12,3;12;71;eigene Fänge
+2026-10-11;18;fang;Hecht;;85;Mescheide;51.72;12.47;Gummi;;;71;Dämmerung;Zunehmende Sichel;1009,7;stabil;14,3;10,5;10;100;eigene Fänge
+2026-10-11;19;fang;Zander;;66;Roßlau Elbe;51.89;12.24;Wobbler;;;63;Dämmerung;Zunehmende Sichel;1010,1;leicht steigend;14,2;11,1;7;97;eigene Fänge
+2026-10-12;12;fang;Zander;;57;Main (Hochheim am Main);50.01;8.35;Wobbler;;;;;;1022,6;leicht steigend;;11,2;3,7;92;öffentliche Fangmeldung
+2026-10-12;17;fang;Zander;;51;Küstenkanal (Friesoythe-Saterland);53.02;7.86;Crankbait;;;;;;1020,7;stabil;;14,7;7,1;17;öffentliche Fangmeldung
+2026-10-12;18;fang;Zander;;57;Elbe (Hitzacker/Elbe);53.15;11.04;Gummifisch;;;;;;1022,1;leicht steigend;;11,8;1,9;45;öffentliche Fangmeldung
+2026-10-12;18;fang;Zander;;75;Rhein (Duisburg-Beek);51.50;6.73;Twister;;;;;;1020,9;stabil;;16;6,1;0;öffentliche Fangmeldung
+2026-10-12;20;fang;Zander;;80;Kraaijenbergse Plassen;51.77;5.82;Fischlaich;;;;;;1020,2;stabil;;11,3;10,1;52;öffentliche Fangmeldung
+2026-10-12;20;fang;Zander;;57;Nord-Ostsee-Kanal (Sehestedt);54.36;9.82;Wobbler;;;;;;1022,4;stabil;;7,7;5;53;öffentliche Fangmeldung
+2026-10-12;20;fang;Zander;;63;Rhein (Rees);51.76;6.40;Wobbler;;;;;;1020,8;stabil;;10,1;8,6;29;öffentliche Fangmeldung
+2026-10-12;20;fang;Zander;;62;Weser (Bremen-Hemelingen);53.06;8.88;Gummifisch;;;;;;1022,5;leicht steigend;;10,7;6,2;84;öffentliche Fangmeldung
+2026-10-13;06;fang;Zander;;52;Nord-Ostsee-Kanal (Schülp);54.28;9.63;Wobbler;;;;;;1021,9;leicht fallend;;5,6;11,3;68;öffentliche Fangmeldung
+2026-10-13;06;fang;Zander;;57;Maas (Venlo);51.37;6.17;Gummifisch;;;;;;1019,7;leicht fallend;;12,7;13,7;100;öffentliche Fangmeldung
+2026-10-13;12;fang;Zander;;56;Süderelbe (Hamburg-Kohlbrand);53.53;9.94;Gummifisch;;;;;;1020,8;leicht fallend;;11,1;12;83;öffentliche Fangmeldung
+2026-10-13;14;fang;Zander;;60;Eider (Dellstedt-Wrohm);54.27;9.21;Gummifisch;;;;;;1017,3;stark fallend;;12,9;20,9;100;öffentliche Fangmeldung
+2026-10-13;16;fang;Zander;;58;Eider (Dellstedt-Wrohm);54.27;9.21;Gummifisch;;;;;;1016,6;stark fallend;;13,4;21;100;öffentliche Fangmeldung
+2026-10-13;16;fang;Zander;;64;Saaler Bodden;54.33;12.50;Gummifisch;;;;;;1020,3;stark fallend;;13,9;23,7;100;öffentliche Fangmeldung
+2026-10-13;18;fang;Zander;;48;Rhein (Rheinberg);51.55;6.60;Gummifisch;;;;;;1019,7;stabil;;15,6;15,1;99;öffentliche Fangmeldung
+2026-10-13;18;fang;Zander;;63;Datteln-Hamm-Kanal (Hamm);51.68;7.82;Gummifisch;;;;;;1019,1;leicht fallend;;15,7;12,4;100;öffentliche Fangmeldung
+2026-10-13;18;fang;Zander;;45;Rhein (Rheinberg);51.55;6.60;Wobbler;;;;;;1019,7;stabil;;15,6;15,1;99;öffentliche Fangmeldung
+2026-10-13;18;fang;Zander;;54;Rhein (Rheinberg);51.55;6.60;Wobbler;;;;;;1019,7;stabil;;15,6;15,1;99;öffentliche Fangmeldung
+2026-10-13;18;fang;Zander;;46;Rhein (Rheinberg);51.55;6.60;Wobbler;;;;;;1019,7;stabil;;15,6;15,1;99;öffentliche Fangmeldung
+2026-10-13;19;fang;Zander;;66;Elbe (Tangermünde);52.54;11.97;Wobbler;;;;;;1019,9;leicht fallend;;14,6;9,8;100;öffentliche Fangmeldung
+2026-10-13;19;fang;Zander;;95;Elbe (Hitzacker/Elbe);53.15;11.04;Gummifisch;;;;;;1018,4;leicht fallend;;13,9;14;100;öffentliche Fangmeldung
