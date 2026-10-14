@@ -75,6 +75,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .fiaaddr{margin-top:4px;padding-left:10px;border-left:2px solid var(--line)}
 .fia .fh{font-weight:800;margin-bottom:4px}.fia.verboten{background:rgba(255,107,90,.12);border-color:rgba(255,107,90,.45)}.fia.eigentuemer{background:rgba(255,181,71,.12);border-color:rgba(255,181,71,.4)}
 .fia hr{border:0;border-top:1px solid var(--line);margin:6px 0}.fia a{color:var(--accent2)}
+.pegelrow{margin-top:6px;font-size:.92rem}
 .winfo{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin:0 0 14px;font-size:.9rem}
 .winfo .wn{font-weight:700;font-size:1rem}.winfo .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .winfo input{flex:1;min-width:10em}
@@ -458,7 +459,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-16 (schneller, Karte in Prognose)</p>
+      <p class="note">Version 2026-10-16b (Pegel und Höhe sichtbar)</p>
     </div>
   </section>
 </main>
@@ -857,21 +858,27 @@ let pegel=null;
 try{pegel=JSON.parse(localStorage.getItem('beissindex:pegel')||'null');}catch(_){}
 async function loadPegel(force){
   const key=wxKey();
-  if(!force&&pegel&&pegel.key===key&&Date.now()-pegel.fetched<60*60e3)return;
+  if(!force&&pegel&&pegel.key===key&&Date.now()-pegel.fetched<30*60e3)return;
   const base='https://www.pegelonline.wsv.de/webservices/rest-api/v2/';
-  let res={key,fetched:Date.now(),value:null};
+  let res={key,fetched:Date.now(),value:null,level:null};
   try{
-    const r=await fetch(base+'stations.json?includeTimeseries=true&radius=10&latitude='+G2(state.lat)+'&longitude='+G2(state.lng),{cache:'no-store'});
+    // Ein Abruf liefert Pegel samt aktuellem Wasserstand und, wo gemessen, Wassertemperatur
+    const r=await fetch(base+'stations.json?includeTimeseries=true&includeCurrentMeasurement=true&radius=15&latitude='+G2(state.lat)+'&longitude='+G2(state.lng),{cache:'no-store'});
     if(r.ok){
-      const list=(await r.json()).filter(s=>Array.isArray(s.timeseries)&&s.timeseries.some(ts=>ts.shortname==='WT')&&isFinite(s.latitude));
+      const all=(await r.json()).filter(s=>Array.isArray(s.timeseries)&&isFinite(s.latitude));
       const dist=s=>Math.hypot((s.latitude-state.lat)*111,(s.longitude-state.lng)*111*Math.cos(state.lat*rad));
-      list.sort((a,b)=>dist(a)-dist(b));
-      for(const s of list.slice(0,3)){
-        const m=await fetch(base+'stations/'+encodeURIComponent(s.uuid)+'/WT/currentmeasurement.json',{cache:'no-store'});
-        if(!m.ok)continue;const mj=await m.json();const ts=Date.parse(mj.timestamp);
-        if(isFinite(mj.value)&&isFinite(ts)&&Date.now()-ts<48*36e5){
-          res={key,fetched:Date.now(),value:+mj.value,ts,station:String(s.longname||s.shortname||''),water:String((s.water&&(s.water.longname||s.water.shortname))||''),km:Math.round(dist(s)*10)/10};break;}
-      }
+      all.sort((a,b)=>dist(a)-dist(b));
+      const nm=s=>String(s.longname||s.shortname||'').replace(/\b([A-ZÄÖÜ])([A-ZÄÖÜ]{2,})\b/g,(m,a,b)=>a+b.toLowerCase());
+      const wn=s=>String((s.water&&(s.water.longname||s.water.shortname))||'').replace(/\b([A-ZÄÖÜ])([A-ZÄÖÜ]{2,})\b/g,(m,a,b)=>a+b.toLowerCase());
+      const fresh=c=>c&&isFinite(c.value)&&Date.now()-Date.parse(c.timestamp)<48*36e5;
+      // Wasserstand: nächster Pegel mit aktueller Messung
+      for(const s of all){const w=s.timeseries.find(t=>t.shortname==='W'&&fresh(t.currentMeasurement));
+        if(w&&dist(s)<=15){const c=w.currentMeasurement;res.level={station:nm(s),water:wn(s),km:Math.round(dist(s)*10)/10,value:+c.value,unit:w.unit||'cm',trend:c.trend,ts:Date.parse(c.timestamp),uuid:s.uuid,state:c.stateMnwMhw||''};break;}}
+      // Wassertemperatur: nächster Pegel mit Temperaturmessung (max. 10 km)
+      for(const s of all){const t=s.timeseries.find(x=>x.shortname==='WT');if(!t||dist(s)>10)continue;
+        let c=t.currentMeasurement;
+        if(!fresh(c)){try{const m=await fetch(base+'stations/'+encodeURIComponent(s.uuid)+'/WT/currentmeasurement.json',{cache:'no-store'});if(m.ok)c=await m.json();}catch(_){}}
+        if(fresh(c)){Object.assign(res,{value:+c.value,ts:Date.parse(c.timestamp),station:nm(s),water:wn(s),km:Math.round(dist(s)*10)/10});break;}}
     }
   }catch(_){}
   if(wxKey()!==key)return;
@@ -1280,7 +1287,13 @@ function renderWaterInfo(){
   const el=$('waterInfo');if(!el)return;
   if(isSea()){el.hidden=true;return;}el.hidden=false;
   const nm=state.waterName,f=fiaHTML(),berlin=inBerlinBox(state.lat,state.lng)&&(!state.region||state.region==='Berlin');
-  el.innerHTML=`<div class="wn">💧 ${nm?esc(nm)+(state.waterKind?' <span class="sub">('+esc(state.waterKind)+')</span>':''):'<span class="sub">Kein Gewässer am gewählten Punkt erkannt</span>'}</div>`+
+  const pg=pegel&&pegel.key===wxKey()?pegel:null,lv=pg&&pg.level;
+  const TR={'1':'↗ steigend','-1':'↘ fallend','0':'→ gleichbleibend'};
+  const elev=wx&&wx.key===wxKey()&&wx.elev!=null?Math.round(wx.elev):null;
+  const extra=(lv?`<div class="pegelrow">📏 <b>${esc(String(lv.value).replace('.',','))} ${esc(lv.unit)}</b> ${lv.trend!=null&&TR[String(lv.trend)]?'<span class="sub">'+TR[String(lv.trend)]+'</span>':''}<br><span class="sub">Pegel ${esc(lv.station)}${lv.water?' ('+esc(lv.water)+')':''}, ${String(lv.km).replace('.',',')} km entfernt, Stand ${fmt(lv.ts)} Uhr${lv.state&&/high|low/i.test(lv.state)?' · '+(/high/i.test(lv.state)?'über mittlerem Hochwasser':'unter mittlerem Niedrigwasser'):''}</span></div>`:'')+
+    (pg&&pg.value!=null?`<div class="pegelrow">🌡️ <b>${String(Math.round(pg.value*10)/10).replace('.',',')} °C</b> Wassertemperatur <span class="sub">gemessen am Pegel ${esc(pg.station)}, ${String(pg.km).replace('.',',')} km</span></div>`:'')+
+    (elev!=null?`<div class="pegelrow sub">⛰️ Höhe ${elev} m über NN</div>`:'');
+  el.innerHTML=`<div class="wn">💧 ${nm?esc(nm)+(state.waterKind?' <span class="sub">('+esc(state.waterKind)+')</span>':''):'<span class="sub">Kein Gewässer am gewählten Punkt erkannt</span>'}</div>`+extra+
     (f||(!berlin&&regionHint()?`<div class="sub" style="margin-top:6px">${esc(regionHint())}</div>`:''));
 }
 document.addEventListener('click',e=>{
@@ -1646,7 +1659,7 @@ async function setPlace(name,lat,lng,knownWater){
   const wxP=loadWeather(true).then(()=>{if(same())render();});
   const gbP=loadGBIFAll(state.lat,state.lng,guessSea).then(g=>{if(!same())return;if(g){speciesChips();fillSpeciesSelect();render();}
     if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,isSea()).then(g2=>{if(g2&&same()){speciesChips();fillSpeciesSelect();render();}});});
-  loadPegel(true).then(()=>{if(same())render();});
+  loadPegel(true).then(()=>{if(same()){render();}});
   const wt=await detectWater(state.lat,state.lng);
   if(!same())return;
   if(wt){try{localStorage.setItem('beissindex:waterKey',myKey);}catch(_){}}
