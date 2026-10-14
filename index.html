@@ -450,7 +450,7 @@ body.sheet-open{overflow:hidden}
     <div class="card">
       <div class="cardhead"><h2>Datenschutz</h2></div>
       <p class="note">Keine Anmeldung, keine Werbung, kein Tracking, keine Cookies. Fangbuch, Fotos, Plätze und Einstellungen werden nur im Speicher dieses Geräts abgelegt und nicht an uns übertragen.</p>
-      <p class="note">Für Wetter, Ortsnamen, Karte und Wassertemperatur ruft die App Daten bei Open-Meteo, OpenStreetMap (Nominatim, Overpass, Kartenkacheln) und Pegelonline ab. Dabei erhalten diese Dienste deine IP-Adresse und den Ort, auf etwa 1 km gerundet, für Ortsnamen auf etwa 100 m.</p>
+      <p class="note">Für Wetter, Ortsnamen, Karte und Wassertemperatur ruft die App Daten bei Open-Meteo, OpenStreetMap (Nominatim, Overpass, Kartenkacheln) und Pegelonline ab. Dabei erhalten diese Dienste deine IP-Adresse und den Ort, auf etwa 1 km gerundet, für Ortsnamen auf etwa 100 m und für die Erkennung des Gewässers auf etwa 10 m.</p>
       <p class="note">Community-Fänge: Die App lädt eine Liste mit Fängen, die vom Betreiber freiwillig veröffentlicht wurde, direkt von diesem Server. Eigene Einträge werden nie automatisch geteilt.</p>
       <p class="note">Standort, Kamera und Fotos nutzt die App nur, wenn du es antippst und dein Gerät es erlaubt. Fotos werden verkleinert neu gespeichert; eingebettete Standortdaten (EXIF) gehen dabei verloren.</p>
       <div class="frow"><a class="btn ghost" href="datenschutz.html" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">Datenschutzerklärung</a><button type="button" class="btn ghost" id="wipeBtn">Alle Daten löschen</button></div>
@@ -459,7 +459,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-16b (Pegel und Höhe sichtbar)</p>
+      <p class="note">Version 2026-10-16c (Gewässererkennung verbessert)</p>
     </div>
   </section>
 </main>
@@ -1599,16 +1599,28 @@ async function detectRegion(lat,lng){
     return region?{region,cc:(a.country_code||'').toLowerCase(),country:a.country||''}:null;}catch(_){return null;}
 }
 async function waterAt(lat,lng){
-  const la=G3(lat),lo=G3(lng);
-  const q=`[out:json][timeout:8];is_in(${la},${lo})->.a;(area.a["natural"="water"]["name"];area.a["landuse"="reservoir"]["name"];)->.w;.w out tags 3;way(around:300,${la},${lo})["waterway"~"^(river|canal|stream)$"]["name"];out tags 3;`;
+  // Genauer als sonst (≈10 m), damit kleine Seen und Uferpunkte getroffen werden
+  const la=(+lat).toFixed(4),lo=(+lng).toFixed(4);
+  const kindOf=tg=>tg.waterway==='canal'||tg.water==='canal'?'Kanal':tg.waterway==='river'||tg.water==='river'||tg.waterway==='riverbank'?'Fluss':tg.waterway==='stream'?'Bach':tg.water==='reservoir'||tg.landuse==='reservoir'?'Stausee':tg.water==='pond'?'Teich':'See';
+  // 1) OpenStreetMap über Overpass: Punkt liegt im Gewässer, sonst nächstes Gewässer bis 150 m, sonst Fluss/Kanal bis 300 m
+  const q=`[out:json][timeout:10];is_in(${la},${lo})->.a;
+(area.a["natural"="water"]["name"];area.a["water"]["name"];area.a["landuse"="reservoir"]["name"];area.a["waterway"="riverbank"]["name"];)->.w;.w out tags 3;
+(way(around:150,${la},${lo})["natural"="water"]["name"];relation(around:150,${la},${lo})["natural"="water"]["name"];)->.n;.n out tags 3;
+way(around:300,${la},${lo})["waterway"~"^(river|canal|stream)$"]["name"];out tags 3;`;
+  const j=await overpassQuery(q);
+  if(j&&j.elements){
+    const el=j.elements.filter(e=>e.tags&&e.tags.name);
+    const pick=el.find(e=>e.type==='area')||el.find(e=>(e.type==='way'||e.type==='relation')&&!e.tags.waterway)||el.find(e=>e.tags.waterway);
+    if(pick)return {name:String(pick.tags['name:de']||pick.tags.name).slice(0,60),kind:kindOf(pick.tags)};
+  }
+  // 2) Ersatz: Nominatim, Ebene „Natur“ (findet Seen auch, wenn Overpass ausgelastet ist)
   try{
-    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
-    if(!r.ok)return null;const el=(await r.json()).elements||[];
-    const area=el.find(e=>e.type==='area'&&e.tags&&e.tags.name),way=el.find(e=>e.type==='way'&&e.tags&&e.tags.name);
-    const pick=area||way;if(!pick)return null;const tg=pick.tags;
-    const kind=tg.waterway==='canal'?'Kanal':tg.waterway==='river'?'Fluss':tg.waterway==='stream'?'Bach':tg.water==='river'?'Fluss':tg.water==='canal'?'Kanal':tg.water==='reservoir'||tg.landuse==='reservoir'?'Stausee':'See';
-    return {name:String(tg['name:de']||tg.name).slice(0,60),kind};
-  }catch(_){return null;}
+    const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=15&layer=natural&accept-language=de&lat='+la+'&lon='+lo,{cache:'no-store'});
+    if(r.ok){const n=await r.json();
+      const isW=n&&(n.category==='water'||n.category==='waterway'||(n.category==='natural'&&/water|bay|wetland/.test(n.type||'')));
+      if(isW&&n.name)return {name:String(n.name).slice(0,60),kind:n.type==='river'||n.type==='riverbank'?'Fluss':n.type==='canal'?'Kanal':n.type==='stream'?'Bach':n.type==='reservoir'?'Stausee':'See'};}
+  }catch(_){}
+  return null;
 }
 async function overpassQuery(q){
   // Hauptserver ist oft ausgelastet: zweiten Server als Ersatz
