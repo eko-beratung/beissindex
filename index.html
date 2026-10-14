@@ -459,7 +459,7 @@ body.sheet-open{overflow:hidden}
       <div class="cardhead"><h2>App weitergeben</h2></div>
       <p class="note">Schick den Link an Angelkollegen. Jeder hat sein eigenes Fangbuch auf seinem Gerät.</p>
       <div class="frow"><button type="button" class="btn" id="shareBtn">Link teilen</button></div>
-      <p class="note">Version 2026-10-16c (Gewässererkennung verbessert)</p>
+      <p class="note">Version 2026-10-17b (mit Befischungsdaten)</p>
     </div>
   </section>
 </main>
@@ -558,8 +558,8 @@ function moonIllum(t){
 const KEY='beissindex:live:v1';
 const state={lat:52.5357,lng:13.1997,place:'Berlin Spandau',species:'zander',waterMode:'auto',waterAuto:'binnen',region:'Berlin',date:todayStr()};
 let wx=null;
-try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','city','species','waterMode','waterAuto','region','country','countryName','waterName','waterKind'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,city:state.city,region:state.region,country:state.country,countryName:state.countryName,waterName:state.waterName,waterKind:state.waterKind,wx}));}catch(_){}}
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){['lat','lng','place','city','species','waterMode','waterAuto','region','country','countryName','waterName','waterKind','waterBB'].forEach(k=>{if(s[k]!=null)state[k]=s[k];});if(s.wx)wx=s.wx;}}catch(_){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({lat:state.lat,lng:state.lng,place:state.place,species:state.species,waterMode:state.waterMode,waterAuto:state.waterAuto,city:state.city,region:state.region,country:state.country,countryName:state.countryName,waterName:state.waterName,waterKind:state.waterKind,waterBB:state.waterBB,wx}));}catch(_){}}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dayBounds(str){const [y,m,d]=str.split('-').map(Number);return [new Date(y,m-1,d).getTime(),new Date(y,m-1,d+1).getTime()];}
 const dstr=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -722,6 +722,7 @@ const FRESH=['wels','zander','hecht','aal','karpfen','rapfen','schleie','bachfor
 const MARINE=['dorsch','seelachs','pollack','leng','heilbutt','meerforelle','wolfsbarsch','lufer','palamut','dorade','makrele','hornhecht','plattfisch','kalkan','mezgit','barbun','kefal','hering','sandaal','grundel','sprotte','istavrit','hamsi','sardalya'];
 const BAIT=new Set(['sardalya','barsch','rotauge','gruendling','ukelei','rotfeder','brasse','hering','sandaal','grundel','sprotte','istavrit','hamsi']);
 let gbif={};try{gbif=JSON.parse(localStorage.getItem('beissindex:gbif')||'{}');}catch(_){gbif={};}
+const MON_DS='e0908eee-ad49-4e91-b4d0-1f05dd17b291';
 let gbifBusy=null;
 let knownKeys={};try{knownKeys=JSON.parse(localStorage.getItem('beissindex:gbifkeys')||'{}');}catch(_){knownKeys={};}
 const KEYSCI={};for(const [s,k] of Object.entries(knownKeys))if(k)KEYSCI[k]=s;
@@ -765,7 +766,7 @@ const DANGER=[
 let gbifSp={};try{gbifSp=JSON.parse(localStorage.getItem('beissindex:gbifsp')||'{}');}catch(_){gbifSp={};}
 let gbifAll={};try{gbifAll=JSON.parse(localStorage.getItem('beissindex:gbifall')||'{}');}catch(_){gbifAll={};}
 let gbifClass=null;try{gbifClass=+localStorage.getItem('beissindex:gbifclass')||null;}catch(_){}
-let onGbifPartial=key=>{if(key===G2(state.lat)+','+G2(state.lng)){speciesChips();fillSpeciesSelect();render();}};
+let onGbifPartial=key=>{if(key===G2(state.lat)+','+G2(state.lng)||key===waterGbifKey()){speciesChips();fillSpeciesSelect();render();}};
 function registerDynamic(){
   for(const [k,s] of Object.entries(gbifSp)){
     if(!s||!s.sci||SCI_REV[s.sci]||KEYSCI[k])continue;
@@ -776,21 +777,26 @@ function registerDynamic(){
   }
 }
 registerDynamic();
-async function loadGBIFAll(lat,lng,sea){
-  const key=G2(lat)+','+G2(lng);
+async function loadGBIFAll(lat,lng,sea,opt){
+  const key=opt&&opt.key?opt.key:G2(lat)+','+G2(lng);
   if(gbifAll[key]&&Date.now()-gbifAll[key].t<60*dayMs)return gbifAll[key];
   try{
     if(!gbifClass){const r=await fetch('https://api.gbif.org/v1/species/match?rank=CLASS&strict=true&name=Actinopterygii');if(r.ok){gbifClass=(await r.json()).usageKey||null;try{localStorage.setItem('beissindex:gbifclass',String(gbifClass));}catch(_){}}}
     if(!gbifClass)return null;
-    const q=km=>fetch(`https://api.gbif.org/v1/occurrence/search?limit=0&hasCoordinate=true&classKey=${gbifClass}&geoDistance=${G2(lat)},${G2(lng)},${km}km&facet=speciesKey&facetLimit=60&facetMincount=3`).then(r=>r.ok?r.json():null);
-    let km=30,j=await q(30);
+    const q=km=>fetch(`https://api.gbif.org/v1/occurrence/search?limit=0&hasCoordinate=true&classKey=${gbifClass}&geoDistance=${(+lat).toFixed(3)},${(+lng).toFixed(3)},${km}km&facet=speciesKey&facetLimit=60&facetMincount=3`).then(r=>r.ok?r.json():null);
+    let km=opt&&opt.km?opt.km:30,j=await q(km);
     if(!j)return null;
-    if((j.count||0)<300){const j2=await q(75);if(j2&&(j2.count||0)>(j.count||0)){j=j2;km=75;}}
+    if(!opt&&(j.count||0)<300){const j2=await q(75);if(j2&&(j2.count||0)>(j.count||0)){j=j2;km=75;}}
     const list=((j.facets&&j.facets[0]&&j.facets[0].counts)||[]).map(c=>({k:c.name,c:c.count}));
+    // Fischmonitoring der Länder (Elektrobefischungen 2000–2020, 12 Bundesländer, Datensatz des LIB auf GBIF)
+    let mon={};
+    try{const jm=await fetch(`https://api.gbif.org/v1/occurrence/search?limit=0&datasetKey=${MON_DS}&geoDistance=${(+lat).toFixed(3)},${(+lng).toFixed(3)},${km}km&facet=speciesKey&facetLimit=60&facetMincount=1`).then(r=>r.ok?r.json():null);
+      if(jm)for(const c of ((jm.facets&&jm.facets[0]&&jm.facets[0].counts)||[]))mon[c.name]=c.count;}catch(_){}
     // Bekannte Arten über einmalig gespeicherte GBIF-Schlüssel sofort zuordnen
     await ensureKnownKeys();
     const quick={};for(const x of list){const sci=KEYSCI[x.k];if(sci)quick[sci]=(quick[sci]||0)+x.c;}
-    gbifAll[key]={t:Date.now(),list,counts:quick,km,total:j.count||0,partial:true};
+    const monSci=()=>{const o={};for(const [k,c] of Object.entries(mon)){const s=KEYSCI[k]||(gbifSp[k]&&gbifSp[k].sci);if(s)o[s]=(o[s]||0)+c;}return o;};
+    gbifAll[key]={t:Date.now(),list,counts:quick,mon:monSci(),km,total:j.count||0,partial:true};
     if(typeof onGbifPartial==='function')onGbifPartial(key);
     // Namen weiterer Arten im Hintergrund (einmalig je Art, danach aus dem Speicher)
     const need=list.filter(x=>!gbifSp[x.k]&&!KEYSCI[x.k]);
@@ -802,28 +808,50 @@ async function loadGBIFAll(lat,lng,sea){
     try{localStorage.setItem('beissindex:gbifsp',JSON.stringify(gbifSp));}catch(_){}
     registerDynamic();
     const counts={};for(const x of list){const s=KEYSCI[x.k]||(gbifSp[x.k]&&gbifSp[x.k].sci);if(s)counts[s]=(counts[s]||0)+x.c;}
-    const res={t:Date.now(),list,counts,km,total:j.count||0};gbifAll[key]=res;
+    const res={t:Date.now(),list,counts,mon:monSci(),km,total:j.count||0};gbifAll[key]=res;
     const ks=Object.keys(gbifAll);if(ks.length>30)delete gbifAll[ks[0]];
     try{localStorage.setItem('beissindex:gbifall',JSON.stringify(gbifAll));}catch(_){}
     return res;
   }catch(_){return null;}
 }
+/* Gewässergenau: Nachweise im Gewässer selbst (Umriss aus OpenStreetMap), bei Flüssen im Abschnitt um den Punkt */
+function waterGbifPlan(){
+  if(!state.waterName)return null;
+  const river=/Fluss|Kanal|Bach/.test(state.waterKind||'');const bb=state.waterBB;
+  if(!river&&bb){const cl=(bb[0]+bb[2])/2,co=(bb[1]+bb[3])/2;
+    const hd=Math.hypot((bb[2]-bb[0])*111,(bb[3]-bb[1])*111*Math.cos(cl*rad))/2;
+    if(hd<=15){const km=Math.max(0.8,Math.round((hd+0.3)*10)/10);return {lat:cl,lng:co,km,key:'w:'+state.waterName+'|'+cl.toFixed(3)+','+co.toFixed(3)+'|'+km};}}
+  return {lat:state.lat,lng:state.lng,km:3,key:'w:'+state.waterName+'|'+G2(state.lat)+','+G2(state.lng)+'|3'};
+}
+const waterGbifKey=()=>{const p=waterGbifPlan();return p?p.key:null;};
+function loadGBIFWater(){const p=waterGbifPlan();if(!p)return Promise.resolve(null);
+  return loadGBIFAll(p.lat,p.lng,isSea(),{km:p.km,key:p.key}).then(g=>{if(g&&waterGbifKey()===p.key){speciesChips();fillSpeciesSelect();render();}return g;});}
+function gbifSource(){
+  const wk=waterGbifKey(),gw=wk?gbifAll[wk]:null,pool=isSea()?MARINE:FRESH;
+  if(gw&&gw.counts&&pool.filter(k=>(gw.counts[SCI[k]]||0)>=3).length>=3)return {g:gw,water:true};
+  return {g:gbifAll[G2(state.lat)+','+G2(state.lng)],water:false};
+}
 function extraSpecies(){
-  const g=gbifAll[G2(state.lat)+','+G2(state.lng)];if(!g)return [];
+  const g=gbifSource().g;if(!g)return [];
   return g.list.map(x=>!KEYSCI[x.k]&&gbifSp[x.k]&&!SCI_REV[gbifSp[x.k].sci]?'g'+x.k:null).filter(k=>k&&SPECIES[k]).slice(0,25);
 }
 function speciesLists(){
-  const W=WATERS[WTYPE()],sea=isSea(),key=G2(state.lat)+','+G2(state.lng)+'|'+(sea?'m':'f'),ga=gbifAll[G2(state.lat)+','+G2(state.lng)];
+  const W=WATERS[WTYPE()],sea=isSea(),key=G2(state.lat)+','+G2(state.lng)+'|'+(sea?'m':'f'),srcG=gbifSource(),ga=srcG.g,inWater=srcG.water;
   const pool0=sea?MARINE:FRESH,enough=c=>c&&pool0.filter(k=>(c[SCI[k]]||0)>=10).length>=3;
-  const g=ga&&enough(ga.counts)?{counts:ga.counts}:(gbif[key]||(ga&&ga.counts?{counts:ga.counts}:null));
+  const g=ga&&enough(ga.counts)?{counts:ga.counts,total:ga.total,mon:ga.mon}:(gbif[key]||(ga&&ga.counts?{counts:ga.counts,total:ga.total,mon:ga.mon}:null));
   const extra=extraSpecies();
   if(!g)return {big:W.big,bait:W.bait,banned:W.banned,extra,src:'typisch'};
   const pool=sea?MARINE:FRESH;
-  const found=pool.filter(k=>(g.counts[SCI[k]]||0)>=10).sort((a,b)=>(g.counts[SCI[b]]||0)-(g.counts[SCI[a]]||0));
+  // Mindestens 10 Nachweise und ein spürbarer Anteil an allen Fischnachweisen der Umgebung.
+  // Besatzfische (Regenbogenforelle) brauchen außerhalb des Berglands einen deutlich höheren Anteil, damit Forellenteiche nicht mitzählen.
+  const tot=g.total||0,STOCKED=new Set(['regenbogenforelle']);
+  const M=g.mon||{},mc=k=>M[SCI[k]]||0;
+  const ok=k=>{if(mc(k)>=1&&(inWater||mc(k)>=2))return true;const c=g.counts[SCI[k]]||0;if(c<(inWater?3:10))return false;if(!tot)return true;const sh=c/tot;return STOCKED.has(k)&&WTYPE()!=='bergland'?sh>=0.02:sh>=0.003;};
+  const found=pool.filter(ok).sort((a,b)=>((mc(b)>0)-(mc(a)>0))||((g.counts[SCI[b]]||0)-(g.counts[SCI[a]]||0)));
   if(found.length<3)return {big:W.big,bait:W.bait,banned:W.banned,extra,src:'typisch'};
   const big=found.filter(k=>!BAIT.has(k)),bait=found.filter(k=>BAIT.has(k));
   const banned=found.filter(isBanned);
-  return {big:big.filter(k=>!isBanned(k)),bait,banned,extra,src:'gbif',counts:g.counts,km:ga&&ga.km||30};
+  return {big:big.filter(k=>!isBanned(k)),bait,banned,extra,src:inWater?'water':'gbif',counts:g.counts,km:ga&&ga.km||30,mon:new Set(found.filter(k=>mc(k)>0))};
 }
 const WATERS={
   binnen:{name:'Binnengewässer (See/Fluss)',big:['wels','zander','hecht','aal','karpfen','rapfen','schleie'],bait:['barsch','rotauge','gruendling','ukelei','rotfeder','brasse']},
@@ -1604,21 +1632,22 @@ async function waterAt(lat,lng){
   const kindOf=tg=>tg.waterway==='canal'||tg.water==='canal'?'Kanal':tg.waterway==='river'||tg.water==='river'||tg.waterway==='riverbank'?'Fluss':tg.waterway==='stream'?'Bach':tg.water==='reservoir'||tg.landuse==='reservoir'?'Stausee':tg.water==='pond'?'Teich':'See';
   // 1) OpenStreetMap über Overpass: Punkt liegt im Gewässer, sonst nächstes Gewässer bis 150 m, sonst Fluss/Kanal bis 300 m
   const q=`[out:json][timeout:10];is_in(${la},${lo})->.a;
-(area.a["natural"="water"]["name"];area.a["water"]["name"];area.a["landuse"="reservoir"]["name"];area.a["waterway"="riverbank"]["name"];)->.w;.w out tags 3;
-(way(around:150,${la},${lo})["natural"="water"]["name"];relation(around:150,${la},${lo})["natural"="water"]["name"];)->.n;.n out tags 3;
+(area.a["natural"="water"]["name"];area.a["water"]["name"];area.a["landuse"="reservoir"]["name"];area.a["waterway"="riverbank"]["name"];)->.w;(way(pivot.w);relation(pivot.w););out tags bb 3;
+(way(around:150,${la},${lo})["natural"="water"]["name"];relation(around:150,${la},${lo})["natural"="water"]["name"];)->.n;.n out tags bb 3;
 way(around:300,${la},${lo})["waterway"~"^(river|canal|stream)$"]["name"];out tags 3;`;
   const j=await overpassQuery(q);
   if(j&&j.elements){
     const el=j.elements.filter(e=>e.tags&&e.tags.name);
-    const pick=el.find(e=>e.type==='area')||el.find(e=>(e.type==='way'||e.type==='relation')&&!e.tags.waterway)||el.find(e=>e.tags.waterway);
-    if(pick)return {name:String(pick.tags['name:de']||pick.tags.name).slice(0,60),kind:kindOf(pick.tags)};
+    const pick=el.find(e=>(e.type==='way'||e.type==='relation')&&!e.tags.waterway&&e.bounds)||el.find(e=>e.type==='area')||el.find(e=>(e.type==='way'||e.type==='relation')&&!e.tags.waterway)||el.find(e=>e.tags.waterway);
+    if(pick){const b=pick.bounds;return {name:String(pick.tags['name:de']||pick.tags.name).slice(0,60),kind:kindOf(pick.tags),bb:b?[b.minlat,b.minlon,b.maxlat,b.maxlon]:null};}
   }
   // 2) Ersatz: Nominatim, Ebene „Natur“ (findet Seen auch, wenn Overpass ausgelastet ist)
   try{
     const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=15&layer=natural&accept-language=de&lat='+la+'&lon='+lo,{cache:'no-store'});
     if(r.ok){const n=await r.json();
       const isW=n&&(n.category==='water'||n.category==='waterway'||(n.category==='natural'&&/water|bay|wetland/.test(n.type||'')));
-      if(isW&&n.name)return {name:String(n.name).slice(0,60),kind:n.type==='river'||n.type==='riverbank'?'Fluss':n.type==='canal'?'Kanal':n.type==='stream'?'Bach':n.type==='reservoir'?'Stausee':'See'};}
+      const nb=Array.isArray(n.boundingbox)?[+n.boundingbox[0],+n.boundingbox[2],+n.boundingbox[1],+n.boundingbox[3]]:null;
+      if(isW&&n.name)return {bb:nb,name:String(n.name).slice(0,60),kind:n.type==='river'||n.type==='riverbank'?'Fluss':n.type==='canal'?'Kanal':n.type==='stream'?'Bach':n.type==='reservoir'?'Stausee':'See'};}
   }catch(_){}
   return null;
 }
@@ -1655,7 +1684,7 @@ async function setPlace(name,lat,lng,knownWater){
   if(Math.hypot((lat-state.lat)*111,(lng-state.lng)*111*Math.cos(lat*rad))>30&&state.waterMode!=='auto'){state.waterMode='auto';}
   // alte Region/Länderregeln sofort verwerfen, bis die neue erkannt ist
   state.region=null;state.country=null;state.countryName='';state.city='';
-  state.waterName=knownWater?knownWater.name:null;state.waterKind=knownWater?knownWater.kind:'';
+  state.waterName=knownWater?knownWater.name:null;state.waterKind=knownWater?knownWater.kind:'';state.waterBB=knownWater&&knownWater.bb?knownWater.bb:null;
   if(map)map._userMoved=false;
   if(!$('oSheet').hidden)closePlace();
   setTimeout(renderSpots,0);
@@ -1665,7 +1694,8 @@ async function setPlace(name,lat,lng,knownWater){
   renderWaterInfo();
   // Alles gleichzeitig starten, jedes Ergebnis erscheint, sobald es da ist
   loadFIA(state.lat,state.lng).then(()=>{if(same())renderWaterInfo();});
-  if(!knownWater)waterAt(state.lat,state.lng).then(w=>{if(!same()||!w)return;state.waterName=w.name;state.waterKind=w.kind;persist();render();});
+  if(!knownWater)waterAt(state.lat,state.lng).then(w=>{if(!same()||!w)return;state.waterName=w.name;state.waterKind=w.kind;state.waterBB=w.bb||null;persist();render();loadGBIFWater();});
+  else loadGBIFWater();
   reverseName(state.lat,state.lng).then(rv=>{if(!same()||!rv)return;
     state.city=rv.city||'';if(rv.state){state.region=rv.state;state.country=rv.cc||'';state.countryName=rv.country||'';}persist();speciesChips();fillSpeciesSelect();render();});
   const wxP=loadWeather(true).then(()=>{if(same())render();});
@@ -1776,7 +1806,7 @@ function speciesChips(){
   const el=$('species'),W=speciesLists();
   const all=[...W.big,...W.bait,...(W.banned||[]),...(W.extra||[])];
   if(!all.includes(state.species)){state.species=W.big[0]||W.bait[0]||(W.extra||[])[0];persist();}
-  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${isBanned(k)?'⛔ ':''}${SPECIES[k].danger?'⚠ ':''}${SPECIES[k].name}<span class="sc" data-sc="${k}"></span></button>`;
+  const chip=k=>`<button type="button" data-v="${k}" aria-pressed="${state.species===k}">${isBanned(k)?'⛔ ':''}${SPECIES[k].danger?'⚠ ':''}${SPECIES[k].name}${W.mon&&W.mon.has(k)?' ✓':''}<span class="sc" data-sc="${k}"></span></button>`;
   const auto=state.waterMode==='auto';
   el.innerHTML=`<div class="wrow"><label class="label" for="waterSel">Gewässer</label><select id="waterSel">
       <option value="auto"${auto?' selected':''}>Automatisch: ${WATERS[state.waterAuto].name}</option>
@@ -1785,7 +1815,7 @@ function speciesChips(){
     <p class="label grp">Köder- &amp; Kleinfische</p><div class="chiprow">${W.bait.filter(k=>!W.big.includes(k)).map(chip).join('')}</div>
     ${W.extra&&W.extra.length?`<p class="label grp">Weitere nachgewiesene Arten</p><div class="chiprow">${W.extra.map(chip).join('')}</div>`:''}
     ${W.banned&&W.banned.length?`<p class="label grp">Gesperrt</p><div class="chiprow">${W.banned.map(chip).join('')}</div>`:''}
-    <p class="sub" style="font-size:.78rem;margin:6px 2px 0">${W.src==='gbif'?`Arten nach Nachweisen im Umkreis von ${W.km||30} km (GBIF), häufigste zuerst.`:'⏳ Ortsgenaue Artenliste wird geladen. Bis dahin: typische Arten des Gewässertyps, nicht ortsgenau.'}</p>`;
+    <p class="sub" style="font-size:.78rem;margin:6px 2px 0">${W.src==='water'?`Arten mit Nachweisen im Gewässer „${esc(state.waterName)}“${/Fluss|Kanal|Bach/.test(state.waterKind||'')?' (Abschnitt im Umkreis von 3 km)':''}, GBIF, häufigste zuerst.`+(W.mon&&W.mon.size?' ✓ = durch Elektrobefischung der Länder belegt (2000–2020).':''):W.src==='gbif'?`Arten nach Nachweisen im Umkreis von ${W.km||30} km (GBIF), häufigste zuerst.`+(W.mon&&W.mon.size?' ✓ = durch Elektrobefischung der Länder belegt (2000–2020).':''):'⏳ Ortsgenaue Artenliste wird geladen. Bis dahin: typische Arten des Gewässertyps, nicht ortsgenau.'}</p>`;
   $('waterSel').onchange=async e=>{state.waterMode=e.target.value;persist();speciesChips();if(typeof fillSpeciesSelect==='function')fillSpeciesSelect();render();await loadWeather(true);render();};
   el.onclick=e=>{const b=e.target.closest('button');if(!b)return;state.species=b.dataset.v;persist();speciesChips();render();};
 }
@@ -2537,6 +2567,7 @@ backfillWeather();
 loadFIA(state.lat,state.lng).then(renderWaterInfo);
 if(!state.city)reverseName(state.lat,state.lng).then(rv=>{if(rv){state.city=rv.city||'';if(rv.state&&!state.region){state.region=rv.state;state.country=rv.cc||'';state.countryName=rv.country||'';}persist();render();}});
 setTimeout(updateMini,300);
+loadGBIFWater();
 loadGBIFAll(state.lat,state.lng,isSea()).then(g=>{if(g){speciesChips();fillSpeciesSelect();render();}if(!g||Object.keys(g.counts||{}).length<5)loadGBIF(state.lat,state.lng,isSea()).then(g2=>{if(g2){speciesChips();fillSpeciesSelect();render();}});});
 (async()=>{const k=wxKey();let done=null;try{done=localStorage.getItem('beissindex:waterKey');}catch(_){}
   if(done===k)return;const wt=await detectWater(state.lat,state.lng);if(!wt)return;
